@@ -1,0 +1,69 @@
+/* Ensure the popup has a fixed width and height */
+/* body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+} */
+
+/* Position the tab strip at the bottom */
+#tab-strip {
+  position: fixed;
+  bottom: 60px; /* Adjust this value based on the address bar height */
+  left: 0;
+  width: 100%;
+  background-color: #f1f1f1;
+  padding: 10px;
+  box-sizing: border-box;
+  z-index: 1000; /* Ensure the tab strip is above other content */
+  display: flex;
+  align-items: center;
+}
+
+/* Style the tabs list */
+#tabs-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 10px;
+  overflow-x: auto; /* Allow horizontal scrolling if tabs overflow */
+  flex-grow: 1; /* Allow the tabs list to grow and take up remaining space */
+}
+
+/* Style individual tabs */
+.tab-item {
+  display: flex;
+  align-items: center;
+  background-color: #fff;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap; /* Prevent tab text from wrapping */
+}
+
+.tab-item:hover {
+  background-color: #ddd;
+}
+
+/* Style the close button */
+.close-tab {
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+/* Style the '+' button */
+#add-tab {
+  background-color: #0078d4;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  flex-shrink: 0; /* Prevent the button from shrinking */
+}
+
+#add-tab:hover {
+  background-color: #005a9e;
+}
