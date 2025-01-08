@@ -1,6 +1,6 @@
 # EdgeTabs+
 
-A Microsoft Edge extension that adds a tab strip above the address bar(bottom) in Edge for Android, improving tab management and navigation.
+Learning to build a Microsoft Edge extension that adds a tab strip above the address bar(bottom) in Edge for Android, improving tab management and navigation.
 
 ## Features
 
@@ -13,11 +13,8 @@ A Microsoft Edge extension that adds a tab strip above the address bar(bottom) i
 ## Installation
 
 1. Download the extension from releases
-2. Open Edge Android
-3. Go to Settings > Extensions
-4. Enable Developer Mode
-5. Load unpacked extension
-6. Select the downloaded extension folder
+2. Open Edge Android Canary
+3. Go to Settings > Developer options > Extension Install by crx
 
 ## Usage
 
@@ -26,16 +23,15 @@ A Microsoft Edge extension that adds a tab strip above the address bar(bottom) i
 - Tap 'x' on a tab to close it
 - Scroll webpage normally with the tab strip present
 
-## Current Limitations
+<!-- ## Current Limitations
 
 - Tab strip only shows tabs that are loaded in memory
 - After browser restart, only the last active tab is visible
-- Some websites may experience scroll interaction issues
-- New tab button positioning needs adjustment
+- Some websites may experience scroll interaction issues -->
 
 ## Development Status
 
-This extension is in active development. Current version: 0.45
+This extension is in active development. Current version: 0.5
 
 ### Working Features
 
@@ -50,6 +46,7 @@ This extension is in active development. Current version: 0.45
 - Memory-related tab visibility
 - UI positioning refinements needed
 - Performance optimizations pending
+- New tab button positioning needs adjustment
 
 ## Technical Details
 
