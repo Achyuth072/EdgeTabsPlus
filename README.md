@@ -31,7 +31,7 @@ Learning to build a Microsoft Edge extension that adds a tab strip above the add
 
 ## Development Status
 
-This extension is in active development. Current version: 0.2.0
+This extension is still in active development.
 
 ### Working Features
 
