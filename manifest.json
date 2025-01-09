@@ -22,5 +22,7 @@
   "web_accessible_resources": [{
     "resources": ["icons/*"],
     "matches": ["<all_urls>"]
-  }]
+  }],
+  "author": "Achyuth072",
+  "license": "GPL-3.0"
 }
