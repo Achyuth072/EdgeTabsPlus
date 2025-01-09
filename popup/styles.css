@@ -71,3 +71,46 @@
 #add-tab:hover {
   background-color: #005a9e;
 }
+
+/* Settings styles */
+.settings-container {
+    padding: 16px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.settings-group {
+    margin-bottom: 24px;
+    padding: 16px;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+
+.settings-group h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: #333;
+}
+
+.settings-group label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.settings-group input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.settings-group input[type="number"] {
+    width: 80px;
+    margin-left: auto;
+    padding: 4px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+#settings-btn {
+  margin-left: 8px;
+}
