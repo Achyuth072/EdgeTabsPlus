@@ -4,7 +4,8 @@ function notifyTabsUpdated() {
         const tabData = tabs.map(tab => ({
             id: tab.id,
             title: tab.title || 'New Tab',
-            active: tab.active
+            active: tab.active,
+            favIconUrl: tab.favIconUrl
         }));
         
         console.log('Sending tabs data:', tabData); // Debug log
