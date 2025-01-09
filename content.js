@@ -45,14 +45,18 @@ style.textContent = `
     }
     #tab-strip-extension ul {
         pointer-events: auto;
-        touch-action: auto;
+        touch-action: pan-x;
         overflow-x: auto;
         overflow-y: hidden;
+        gap: 2px;  /* Reduce gap between tabs */
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
     }
-    html, body {
-        overflow: auto !important;
-        overscroll-behavior: auto !important;
-        touch-action: auto !important;
+    .tab-item {
+        scroll-snap-align: start;
+    }
+    #tab-strip-extension ul::-webkit-scrollbar {
+        display: none;
     }
 `;
 document.head.appendChild(style);
@@ -241,3 +245,54 @@ chrome.runtime.onMessage.addListener((message) => {
 
 // Request initial tabs
 chrome.runtime.sendMessage({ action: 'getTabs' });
+
+// Add touch scroll handling
+function updateTouchScroll() {
+    let startX;
+    let scrollLeft;
+    let isTabsDragging = false;
+    let lastX;
+    let velocity = 0;
+    let animationFrame;
+
+    tabsList.addEventListener('touchstart', (e) => {
+        isTabsDragging = true;
+        startX = e.touches[0].pageX;
+        lastX = startX;
+        scrollLeft = tabsList.scrollLeft;
+        velocity = 0;
+        cancelAnimationFrame(animationFrame);
+    }, { passive: true });
+
+    tabsList.addEventListener('touchmove', (e) => {
+        if (!isTabsDragging) return;
+        
+        const x = e.touches[0].pageX;
+        const dx = x - lastX;
+        lastX = x;
+        
+        // Update velocity
+        velocity = dx * 0.8 + velocity * 0.2;
+        
+        tabsList.scrollLeft = scrollLeft - (x - startX);
+    }, { passive: true });
+
+    tabsList.addEventListener('touchend', () => {
+        if (!isTabsDragging) return;
+        
+        isTabsDragging = false;
+        
+        // Add momentum scrolling
+        function momentum() {
+            if (Math.abs(velocity) > 0.1) {
+                tabsList.scrollLeft -= velocity;
+                velocity *= 0.95;
+                animationFrame = requestAnimationFrame(momentum);
+            }
+        }
+        momentum();
+    }, { passive: true });
+}
+
+// Call the updated touch scroll function
+updateTouchScroll();
