@@ -1,4 +1,4 @@
-// Configuration
+// Keep only essential configurations
 const CONFIG = {
     scroll: {
         threshold: 50,
@@ -11,6 +11,9 @@ const CONFIG = {
         backgroundColor: '#f1f1f1'
     }
 };
+
+// Keep favicon cache for performance
+const FAVICON_CACHE = new Map();
 
 // Create tab strip with fixed positioning but without scroll interference
 const tabStrip = document.createElement('div');
@@ -38,6 +41,7 @@ style.textContent = `
     #tab-strip-extension * {
         pointer-events: auto;
         touch-action: auto;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
     }
     #tab-strip-extension ul {
         pointer-events: auto;
@@ -75,6 +79,18 @@ addTabButton.style.border = 'none';
 addTabButton.style.fontSize = '20px';
 addTabButton.style.cursor = 'pointer';
 
+// Update add tab button styles
+addTabButton.style.position = 'sticky';
+addTabButton.style.right = '0';
+addTabButton.style.marginLeft = '4px';
+addTabButton.style.padding = '4px 8px';
+addTabButton.style.height = '100%';
+addTabButton.style.display = 'flex';
+addTabButton.style.alignItems = 'center';
+addTabButton.style.justifyContent = 'center';
+addTabButton.style.backgroundColor = '#f1f1f1';
+addTabButton.style.borderLeft = '1px solid #ddd';
+
 // Tab creation handler
 addTabButton.onclick = (e) => {
     e.preventDefault();
@@ -82,18 +98,88 @@ addTabButton.onclick = (e) => {
     chrome.runtime.sendMessage({ action: 'createTab' });
 };
 
+// In content.js, add tab width calculation
+function calculateTabWidth(tabCount) {
+    const minWidth = 48; // More reasonable minimum width
+    const maxWidth = 180; // Maximum width for better readability
+    const screenWidth = window.innerWidth;
+    const padding = 48; // Account for add button and margins
+    const availableWidth = screenWidth - padding;
+    const calculatedWidth = Math.floor(availableWidth / tabCount);
+    return Math.min(maxWidth, Math.max(minWidth, calculatedWidth));
+}
+
 // Simplified tab rendering
 function renderTabs(tabs) {
+    const tabWidth = calculateTabWidth(tabs.length);
     tabsList.innerHTML = '';
     tabs.forEach(tab => {
         const tabItem = document.createElement('li');
         tabItem.className = 'tab-item';
-        tabItem.textContent = tab.title || 'New Tab';
+        tabItem.style.width = `${tabWidth}px`;
+        
+        // Improved favicon handling
+        const favicon = new Image();
+        favicon.style.width = '16px';
+        favicon.style.height = '16px';
+        favicon.style.marginRight = '4px';
+        favicon.style.flexShrink = '0';
+        favicon.style.objectFit = 'contain';
+        
+        // Remove lazy loading for better stability
+        favicon.decoding = 'sync';
+
+        // Enhanced favicon caching with tab URL as key
+        const cacheKey = `${tab.id}-${tab.url}`;
+        const cachedIcon = FAVICON_CACHE.get(cacheKey);
+        
+        if (cachedIcon) {
+            favicon.src = cachedIcon;
+        } else if (tab.favIconUrl) {
+            // Prevent DuckDuckGo favicon flicker
+            if (tab.url?.includes('duckduckgo.com')) {
+                favicon.src = 'https://duckduckgo.com/favicon.ico';
+            } else {
+                favicon.src = tab.favIconUrl;
+            }
+            favicon.onerror = () => {
+                const defaultIcon = chrome.runtime.getURL('icons/default-favicon.png');
+                favicon.src = defaultIcon;
+                FAVICON_CACHE.set(cacheKey, defaultIcon);
+            };
+            favicon.onload = () => FAVICON_CACHE.set(cacheKey, tab.favIconUrl);
+        } else {
+            favicon.src = chrome.runtime.getURL('icons/default-favicon.png');
+        }
+
+        // Improved title handling
+        const titleSpan = document.createElement('span');
+        titleSpan.style.overflow = 'hidden';
+        titleSpan.style.textOverflow = 'ellipsis';
+        titleSpan.style.whiteSpace = 'nowrap';
+        titleSpan.style.flexGrow = '1';
+        
+        // Enhanced title cleaning
+        let cleanTitle = tab.title;
+        cleanTitle = cleanTitle
+            .replace(/ at DuckDuckGo$/i, '')
+            .replace(/ - DuckDuckGo$/i, '')
+            .split(' - ')[0]
+            .trim();
+            
+        titleSpan.textContent = cleanTitle || 'New Tab';
+
+        // Append elements
+        tabItem.appendChild(favicon);
+        tabItem.appendChild(titleSpan);
+        
+        // Rest of your existing tab styling
         tabItem.style.padding = '2px 5px';
         tabItem.style.cursor = 'pointer';
         tabItem.style.height = '36px';
         tabItem.style.display = 'flex';
         tabItem.style.alignItems = 'center';
+        tabItem.style.justifyContent = 'flex-start'; // Align items to start
         
         if (tab.active) {
             tabItem.style.backgroundColor = '#ddd';
