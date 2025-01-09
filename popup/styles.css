@@ -19,6 +19,7 @@
   z-index: 1000; /* Ensure the tab strip is above other content */
   display: flex;
   align-items: center;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); /* This matches Edge's native transition timing, probably? */
 }
 
 /* Style the tabs list */
@@ -55,13 +56,16 @@
 
 /* Style the '+' button */
 #add-tab {
-  background-color: #0078d4;
-  color: white;
-  border: none;
-  padding: 5px 10px;
-  border-radius: 5px;
-  cursor: pointer;
-  flex-shrink: 0; /* Prevent the button from shrinking */
+  position: sticky;
+  right: 8px;
+  margin-left: 8px;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
 }
 
 #add-tab:hover {
