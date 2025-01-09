@@ -1,65 +1,59 @@
 # EdgeTabs+
 
-Learning to build a Microsoft Edge extension that adds a tab strip above the address bar(bottom) in Edge for Android, improving tab management and navigation.
+Learning to buid a Microsoft Edge extension that adds a bottom-positioned tab strip for Android, enhancing tab management and navigation.
 
 ## Features
 
-- Bottom-positioned tab strip for easy access
-- Create new tabs with a single tap
-- Switch between tabs quickly
-- Close tabs directly from the strip
-- Designed for touch interaction
+### Tab Management
 
-## Installation
+- Quick tab creation and closing
+- Instant tab switching
+- Horizontal scrolling for multiple tabs
+- Favicons with tab titles
 
-1. Download the extension from releases
+### User Interface
+
+- Bottom-positioned tab strip
+- Touch-optimized interactions
+- Scroll-to-hide behavior
+- Synchronized animations with Edge UI
+
+### Customization
+
+- Configurable tab appearance
+- Adjustable scroll sensitivity
+- Custom tab behaviors
+- Theme options (planned)
+
+<!-- ## Installation
+
+1. Download the latest release (.crx file)
 2. Open Edge Android Canary
-3. Go to Settings > Developer options > Extension Install by crx
+3. Enable Developer Mode in Edge settings
+4. Go to Settings > Developer options > Extension Install by crx
+5. Select the downloaded .crx file -->
 
 ## Usage
 
-- Tap '+' to create a new tab
-- Tap on any tab to switch to it
-- Tap 'x' on a tab to close it
-- Scroll webpage normally with the tab strip present
+### Basic Controls
 
-<!-- ## Current Limitations
-
-- Tab strip only shows tabs that are loaded in memory
-- After browser restart, only the last active tab is visible
-- Some websites may experience scroll interaction issues -->
+- Tap '+' for new tab
+- Tap tab to switch
+- Tap 'x' to close
+- Scroll horizontally for more tabs
+- Scroll page down to hide tab strip
+- Tap gear icon for settings
 
 ## Development Status
 
-This extension is still in active development.
+### ![License](https://img.shields.io/github/license/Achyuth072/EdgeTabsPlus) ![Version](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/Achyuth072/EdgeTabsPlus/main/manifest.json&label=version&query=$.version&color=blue) ![Development Status](https://img.shields.io/badge/status-beta-orange) ![Last Commit](https://img.shields.io/github/last-commit/Achyuth072/EdgeTabsPlus)
 
-### Working Features
+- Bottom tab strip implementation ✓
+- Basic tab operations ✓
+- Settings interface ✓
+- Touch optimization (in progress)
+- Production build (in progress)
 
-- Tab strip UI
-- Tab creation
-- Tab switching
-- Tab closing
-- Basic error handling
+### Requirements
 
-### Known Issues
-
-- Memory-related tab visibility
-- UI positioning refinements needed
-- Performance optimizations pending
-- New tab button positioning needs adjustment
-
-## Technical Details
-
-Built using:
-
-- Edge Extensions API (MV3)
-- Core APIs: tabs, runtime, storage (planned)
-- Pure JavaScript without dependencies
-
-## License
-
-MIT License
-
-## Contributing
-
-<!-- Issues and pull requests are welcome. Please check the [PROGRESS.md](PROGRESS.md) file for current development status and planned improvements. -->
+- Microsoft Edge Android Canary
