@@ -51,9 +51,14 @@ style.textContent = `
         gap: 2px;  /* Reduce gap between tabs */
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
+        padding-right: 8px; /* Add padding to prevent close button overlap */
     }
     .tab-item {
         scroll-snap-align: start;
+        padding: 2px 8px; /* Increase horizontal padding */
+    }
+    .tab-item:last-child {
+        margin-right: 4px; /* Add extra margin to last tab */
     }
     #tab-strip-extension ul::-webkit-scrollbar {
         display: none;
