@@ -1,10 +1,15 @@
 // Get references to the DOM elements
 const tabsList = document.getElementById('tabs-list');
 const addTabButton = document.getElementById('add-tab');
+const settingsBtn = document.getElementById('settings-btn');
 
 // Function to create a new tab via background script
 addTabButton.addEventListener('click', () => {
     chrome.runtime.sendMessage({ action: 'createTab' });
+});
+
+settingsBtn.addEventListener('click', () => {
+    chrome.runtime.openOptionsPage();
 });
 
 // Function to render the list of tabs with error handling
