@@ -38,11 +38,23 @@ tabStrip.style.transform = 'translate3d(0,0,0)';
 // Add scoped styles to prevent interference
 const style = document.createElement('style');
 style.textContent = `
+    #tab-strip-extension,
     #tab-strip-extension * {
         pointer-events: auto;
         touch-action: auto;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif !important;
+        font-size: 14px !important;
+        font-weight: normal !important;
+        letter-spacing: normal !important;
+        text-transform: none !important;
+        box-sizing: border-box !important;
     }
+    
+    #tab-strip-extension {
+        display: flex !important;
+        align-items: center !important;
+    }
+    
     #tab-strip-extension ul {
         pointer-events: auto;
         touch-action: pan-x;
@@ -51,17 +63,14 @@ style.textContent = `
         gap: 2px;  /* Reduce gap between tabs */
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
-        padding-right: 8px; /* Add padding to prevent close button overlap */
+        flex: 1;
+        margin: 0;
+        padding: 0;
+        display: flex;
     }
     .tab-item {
         scroll-snap-align: start;
         padding: 2px 8px; /* Increase horizontal padding */
-    }
-    .tab-item:last-child {
-        margin-right: 4px; /* Add extra margin to last tab */
-    }
-    #tab-strip-extension ul::-webkit-scrollbar {
-        display: none;
     }
 `;
 document.head.appendChild(style);
@@ -89,11 +98,10 @@ addTabButton.style.fontSize = '20px';
 addTabButton.style.cursor = 'pointer';
 
 // Update add tab button styles
-addTabButton.style.position = 'sticky';
-addTabButton.style.right = '0';
-addTabButton.style.marginLeft = '4px';
-addTabButton.style.padding = '4px 8px';
-addTabButton.style.height = '100%';
+addTabButton.style.marginLeft = 'auto';
+addTabButton.style.flexShrink = '0';
+addTabButton.style.width = '32px';
+addTabButton.style.height = '32px';
 addTabButton.style.display = 'flex';
 addTabButton.style.alignItems = 'center';
 addTabButton.style.justifyContent = 'center';
