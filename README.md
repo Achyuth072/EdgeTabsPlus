@@ -4,26 +4,19 @@ Learning to buid a Microsoft Edge extension that adds a bottom-positioned tab st
 
 ## Features
 
+### Core Features
+
+- Bottom-positioned tab strip
+- Favicon support with tab titles
+- Dynamic tab sizing and scrolling
+- Touch-optimized interactions
+
 ### Tab Management
 
 - Quick tab creation and closing
 - Instant tab switching
 - Horizontal scrolling for multiple tabs
-- Favicons with tab titles
-
-### User Interface
-
-- Bottom-positioned tab strip
-- Touch-optimized interactions
-- Scroll-to-hide behavior
-- Synchronized animations with Edge UI
-
-### Customization
-
-- Configurable tab appearance
-- Adjustable scroll sensitivity
-- Custom tab behaviors
-- Theme options (planned)
+- Tab previews with favicons (maybe?)
 
 <!-- ## Installation
 
@@ -42,17 +35,25 @@ Learning to buid a Microsoft Edge extension that adds a bottom-positioned tab st
 - Tap 'x' to close
 - Scroll horizontally for more tabs
 - Scroll page down to hide tab strip
-- Tap gear icon for settings
+- Access settings via extension menu (not possible yet on mobile)
 
 ## Development Status
 
 ### ![License](https://img.shields.io/github/license/Achyuth072/EdgeTabsPlus) ![Version](https://img.shields.io/badge/dynamic/json?url=https://raw.githubusercontent.com/Achyuth072/EdgeTabsPlus/main/manifest.json&label=version&query=$.version&color=blue) ![Development Status](https://img.shields.io/badge/status-beta-orange) ![Last Commit](https://img.shields.io/github/last-commit/Achyuth072/EdgeTabsPlus)
 
+#### Completed Features
+
 - Bottom tab strip implementation ✓
 - Basic tab operations ✓
+- Favicon support ✓
 - Settings interface ✓
-- Touch optimization (in progress)
-- Production build (in progress)
+- Font and layout customization ✓
+
+#### In Progress
+
+- Touch optimization
+- Mobile-specific improvements
+- Tab state management
 
 ### Requirements
 
