@@ -12,6 +12,64 @@ const CONFIG = {
     }
 };
 
+// Step 1: Add Overlay HTML and CSS
+// Create a logging overlay
+const logOverlay = document.createElement('div');
+logOverlay.id = 'log-overlay';
+logOverlay.style.position = 'fixed';
+logOverlay.style.bottom = '40px';
+logOverlay.style.left = '0';
+logOverlay.style.width = '100%';
+logOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+logOverlay.style.color = 'white';
+logOverlay.style.fontFamily = 'monospace';
+logOverlay.style.fontSize = '12px';
+logOverlay.style.padding = '5px';
+logOverlay.style.zIndex = '2147483647'; // Highest possible z-index
+logOverlay.style.overflowY = 'auto';
+logOverlay.style.maxHeight = '100px';
+logOverlay.style.whiteSpace = 'pre-wrap';
+document.body.appendChild(logOverlay);
+
+// Function to add logs to the overlay
+function addLog(message) {
+    const logEntry = document.createElement('div');
+    logEntry.textContent = message;
+    logOverlay.appendChild(logEntry);
+    logOverlay.scrollTop = logOverlay.scrollHeight;
+}
+
+// Function to get favicon URL with timeout
+function getFaviconUrl(tabId, timeout = 2000) {
+    return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+            clearTimeout(timeoutId);
+            reject(new Error('Timeout'));
+        }, timeout);
+        chrome.runtime.sendMessage({ action: 'getFaviconUrl', tabId: tabId }, function(response) {
+            clearTimeout(timeoutId);
+            if (response && response.favIconUrl) {
+                resolve(response.favIconUrl);
+            } else {
+                reject(new Error('No favicon URL available'));
+            }
+        });
+    });
+}
+
+// Add a toggle button for the overlay
+const toggleButton = document.createElement('button');
+toggleButton.textContent = 'Toggle Logs';
+toggleButton.style.position = 'fixed';
+toggleButton.style.bottom = '100px';
+toggleButton.style.right = '10px';
+toggleButton.style.zIndex = '2147483647';
+document.body.appendChild(toggleButton);
+
+toggleButton.onclick = () => {
+    logOverlay.style.display = logOverlay.style.display === 'none' ? 'block' : 'none';
+};
+
 // Keep favicon cache for performance
 const FAVICON_CACHE = new Map();
 
@@ -146,28 +204,58 @@ function renderTabs(tabs) {
         // Remove lazy loading for better stability
         favicon.decoding = 'sync';
 
+        // Step 5: Ensure absolute favicon URLs
+        if (tab.favIconUrl && !tab.favIconUrl.startsWith('http')) {
+            tab.favIconUrl = new URL(tab.favIconUrl, tab.url).href;
+            addLog(`Converted favicon URL to absolute: ${tab.favIconUrl}`);
+        }
+
         // Enhanced favicon caching with tab URL as key
         const cacheKey = `${tab.id}-${tab.url}`;
         const cachedIcon = FAVICON_CACHE.get(cacheKey);
         
+        // Step 3: Add enhanced error logging here
         if (cachedIcon) {
+            addLog(`Using cached favicon for tab: ${tab.id} ${cachedIcon}`);
             favicon.src = cachedIcon;
         } else if (tab.favIconUrl) {
-            // Prevent DuckDuckGo favicon flicker
-            if (tab.url?.includes('duckduckgo.com')) {
-                favicon.src = 'https://duckduckgo.com/favicon.ico';
-            } else {
-                favicon.src = tab.favIconUrl;
-            }
+            addLog(`Loading favicon from: ${tab.favIconUrl}`);
+            favicon.src = tab.favIconUrl;
             favicon.onerror = () => {
+                addLog(`Failed to load favicon for tab: ${tab.id} ${tab.favIconUrl}`);
                 const defaultIcon = chrome.runtime.getURL('icons/default-favicon.png');
                 favicon.src = defaultIcon;
                 FAVICON_CACHE.set(cacheKey, defaultIcon);
             };
-            favicon.onload = () => FAVICON_CACHE.set(cacheKey, tab.favIconUrl);
+            favicon.onload = () => {
+                addLog(`Loaded favicon for tab: ${tab.id} ${tab.favIconUrl}`);
+                FAVICON_CACHE.set(cacheKey, tab.favIconUrl);
+            };
         } else {
-            favicon.src = chrome.runtime.getURL('icons/default-favicon.png');
+            // Handle undefined tab.url
+            if (tab.url) {
+                addLog(`Tab URL for tab ${tab.id}: ${tab.url}`);
+                const faviconServiceUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(tab.url)}`;
+                addLog(`Loading favicon from service: ${faviconServiceUrl}`);
+                favicon.src = faviconServiceUrl;
+                favicon.onerror = () => {
+                    addLog(`Failed to load favicon from service for tab: ${tab.id}`);
+                    const defaultIcon = chrome.runtime.getURL('icons/default-favicon.png');
+                    favicon.src = defaultIcon;
+                    FAVICON_CACHE.set(cacheKey, defaultIcon);
+                };
+                favicon.onload = () => {
+                    addLog(`Loaded favicon from service for tab: ${tab.id} ${faviconServiceUrl}`);
+                    FAVICON_CACHE.set(cacheKey, faviconServiceUrl);
+                };
+            } else {
+                addLog(`Tab URL is undefined for tab: ${tab.id}`);
+                const defaultIcon = chrome.runtime.getURL('icons/default-favicon.png');
+                favicon.src = defaultIcon;
+                FAVICON_CACHE.set(cacheKey, defaultIcon);
+            }
         }
+
 
         // Improved title handling
         const titleSpan = document.createElement('span');
