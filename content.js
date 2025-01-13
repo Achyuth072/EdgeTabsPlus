@@ -29,6 +29,7 @@ logOverlay.style.zIndex = '2147483647'; // Highest possible z-index
 logOverlay.style.overflowY = 'auto';
 logOverlay.style.maxHeight = '100px';
 logOverlay.style.whiteSpace = 'pre-wrap';
+logOverlay.style.display = 'none'; // Hidden by default
 document.body.appendChild(logOverlay);
 
 // Function to add logs to the overlay
@@ -57,15 +58,24 @@ function getFaviconUrl(tabId, timeout = 2000) {
     });
 }
 
-// Add a toggle button for the overlay
+// Create a toggle button with Edge-like styling
 const toggleButton = document.createElement('button');
-toggleButton.textContent = 'Toggle Logs';
+toggleButton.textContent = '📜'; // Use an icon or text
 toggleButton.style.position = 'fixed';
 toggleButton.style.bottom = '100px';
 toggleButton.style.right = '10px';
 toggleButton.style.zIndex = '2147483647';
+toggleButton.style.backgroundColor = '#0078D7'; // Edge's blue color
+toggleButton.style.color = 'white';
+toggleButton.style.border = 'none';
+toggleButton.style.borderRadius = '50%';
+toggleButton.style.width = '40px';
+toggleButton.style.height = '40px';
+toggleButton.style.cursor = 'pointer';
+toggleButton.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
 document.body.appendChild(toggleButton);
 
+// Toggle log overlay visibility
 toggleButton.onclick = () => {
     logOverlay.style.display = logOverlay.style.display === 'none' ? 'block' : 'none';
 };
@@ -75,7 +85,7 @@ const FAVICON_CACHE = new Map();
 
 // Create tab strip with fixed positioning but without scroll interference
 const tabStrip = document.createElement('div');
-tabStrip.id = 'tab-strip-extension'; // Unique ID
+tabStrip.id = 'edgetabs-plus-strip'; // Unique ID
 tabStrip.style.position = 'fixed';
 tabStrip.style.bottom = CONFIG.tabStrip.bottomOffset;
 tabStrip.style.left = '0';
@@ -96,8 +106,8 @@ tabStrip.style.transform = 'translate3d(0,0,0)';
 // Add scoped styles to prevent interference
 const style = document.createElement('style');
 style.textContent = `
-    #tab-strip-extension,
-    #tab-strip-extension * {
+    #edgetabs-plus-strip,
+    #edgetabs-plus-strip * {
         pointer-events: auto;
         touch-action: auto;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif !important;
@@ -108,12 +118,12 @@ style.textContent = `
         box-sizing: border-box !important;
     }
     
-    #tab-strip-extension {
+    #edgetabs-plus-strip {
         display: flex !important;
         align-items: center !important;
     }
     
-    #tab-strip-extension ul {
+    #edgetabs-plus-strip ul {
         pointer-events: auto;
         touch-action: pan-x;
         overflow-x: auto;
@@ -215,7 +225,12 @@ function renderTabs(tabs) {
         const cachedIcon = FAVICON_CACHE.get(cacheKey);
         
         // Step 3: Add enhanced error logging here
-        if (cachedIcon) {
+        // Handle Edge internal pages
+        if (tab.url && tab.url.startsWith('edge://')) {
+            addLog(`Edge internal page detected for tab: ${tab.id}`);
+            favicon.src = chrome.runtime.getURL('icons/edge-logo.png');
+            FAVICON_CACHE.set(cacheKey, chrome.runtime.getURL('icons/edge-logo.png'));
+        } else if (cachedIcon) {
             addLog(`Using cached favicon for tab: ${tab.id} ${cachedIcon}`);
             favicon.src = cachedIcon;
         } else if (tab.favIconUrl) {
@@ -235,7 +250,7 @@ function renderTabs(tabs) {
             // Handle undefined tab.url
             if (tab.url) {
                 addLog(`Tab URL for tab ${tab.id}: ${tab.url}`);
-                const faviconServiceUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(tab.url)}`;
+                const faviconServiceUrl = `https://icons.duckduckgo.com/ip3/${new URL(tab.url).hostname}.ico`;
                 addLog(`Loading favicon from service: ${faviconServiceUrl}`);
                 favicon.src = faviconServiceUrl;
                 favicon.onerror = () => {
