@@ -13,7 +13,7 @@ const CONFIG = {
 };
 
 // Step 1: Add Overlay HTML and CSS
-// Create a logging overlay
+// Create a logging overlay(hidden by default)
 const logOverlay = document.createElement('div');
 logOverlay.id = 'log-overlay';
 logOverlay.style.position = 'fixed';
@@ -40,6 +40,23 @@ function addLog(message) {
     logOverlay.scrollTop = logOverlay.scrollHeight;
 }
 
+// Create a toggle button with Edge-like styling
+const toggleButton = document.createElement('button');
+toggleButton.textContent = '📜'; // Use an icon or text
+toggleButton.style.position = 'fixed';
+toggleButton.style.bottom = '100px';
+toggleButton.style.right = '10px';
+toggleButton.style.zIndex = '2147483647';
+toggleButton.style.backgroundColor = '#0078D7'; // Edge's blue color
+toggleButton.style.color = 'white';
+toggleButton.style.border = 'none';
+toggleButton.style.borderRadius = '50%';
+toggleButton.style.width = '40px';
+toggleButton.style.height = '40px';
+toggleButton.style.cursor = 'pointer';
+toggleButton.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+document.body.appendChild(toggleButton);
+
 // Function to get favicon URL with timeout
 function getFaviconUrl(tabId, timeout = 2000) {
     return new Promise((resolve, reject) => {
@@ -57,23 +74,6 @@ function getFaviconUrl(tabId, timeout = 2000) {
         });
     });
 }
-
-// Create a toggle button with Edge-like styling
-const toggleButton = document.createElement('button');
-toggleButton.textContent = '📜'; // Use an icon or text
-toggleButton.style.position = 'fixed';
-toggleButton.style.bottom = '100px';
-toggleButton.style.right = '10px';
-toggleButton.style.zIndex = '2147483647';
-toggleButton.style.backgroundColor = '#0078D7'; // Edge's blue color
-toggleButton.style.color = 'white';
-toggleButton.style.border = 'none';
-toggleButton.style.borderRadius = '50%';
-toggleButton.style.width = '40px';
-toggleButton.style.height = '40px';
-toggleButton.style.cursor = 'pointer';
-toggleButton.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
-document.body.appendChild(toggleButton);
 
 // Toggle log overlay visibility
 toggleButton.onclick = () => {
