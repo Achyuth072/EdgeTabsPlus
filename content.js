@@ -6,7 +6,7 @@ const CONFIG = {
         transformDuration: '0.3s'
     },
     tabStrip: {
-        height: '40px',
+        height: '44px',
         bottomOffset: '0px',
         backgroundColor: '#f1f1f1'
     }
@@ -114,8 +114,8 @@ style.textContent = `
     }
     
     #edgetabs-plus-strip {
-        display: flex !important;
-        align-items: center !important;
+        min-height: 40px !important;
+        padding: 4px 8px !important;
     }
     
     #edgetabs-plus-strip ul {
@@ -132,9 +132,75 @@ style.textContent = `
         display: flex;
     }
     .tab-item {
-        scroll-snap-align: start;
-        padding: 2px 8px; /* Increase horizontal padding */
+        min-height: 40px !important;
+        padding: 8px 12px !important;
+        border-radius: 8px !important;
+        position: relative !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important; /* Changed from flex-start to space-between */
+        gap: 8px !important;
     }
+
+    /* Add touch-friendly area */
+    .tab-item::before {
+        content: '';
+        position: absolute !important;
+        top: -8px !important;
+        bottom: -8px !important;
+        left: -4px !important;
+        right: -4px !important;
+        z-index: -1 !important;
+    }
+
+    /* Enhanced close button style */
+    .close-tab {
+        min-width: 28px !important; 
+        min-height: 28px !important;
+        font-size: 26px !important; 
+        font-weight: 700 !important; /* Made bolder */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin-left: auto !important; /* Push to right */
+        margin-right: -4px !important; /* Move slightly more right */
+        color: #666 !important;
+        cursor: pointer !important;
+        padding: 0 !important;
+        line-height: 1 !important;
+    }
+
+    /* Add hover effect for close button */
+    .close-tab:hover {
+        background-color: rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* Update title span style to prevent overlap */
+    .tab-item span:not(.close-tab) {
+        flex: 1 !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        margin-right: 8px !important; /* Increased spacing before close button */
+    }
+
+    /* Enhanced add button style */
+    #add-tab {
+        min-width: 32px !important;
+        min-height: 32px !important;
+        font-size: 32px !important;
+        font-weight: 500 !important;
+        font-family: system-ui !important;
+        line-height: 1 !important;
+        color: #666 !important;
+        padding: 4px !important;
+        opacity: 0.85 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin-left: 8px !important;
+    }
+
         /* Log Overlay Styles */
     #log-overlay {
         position: fixed;
@@ -191,7 +257,7 @@ tabsList.style.width = '100%';
 
 // Create add button with pointer events enabled
 const addTabButton = document.createElement('button');
-addTabButton.textContent = '+';
+addTabButton.innerHTML = '&#43;'; // Using HTML entity for plus sign
 addTabButton.style.pointerEvents = 'auto';
 addTabButton.style.marginLeft = 'auto';
 addTabButton.style.background = 'none';
@@ -228,7 +294,7 @@ function calculateTabWidth(tabCount) {
     return Math.min(maxWidth, Math.max(minWidth, calculatedWidth));
 }
 
-// Simplified tab rendering
+// Tab rendering
 function renderTabs(tabs) {
     const tabWidth = calculateTabWidth(tabs.length);
     tabsList.innerHTML = '';
@@ -236,14 +302,13 @@ function renderTabs(tabs) {
         const tabItem = document.createElement('li');
         tabItem.className = 'tab-item';
         tabItem.style.width = `${tabWidth}px`;
+        tabItem.style.minHeight = '40px'; // Minimum touch target height
         
         // Improved favicon handling
         const favicon = new Image();
-        favicon.style.width = '16px';
-        favicon.style.height = '16px';
-        favicon.style.marginRight = '4px';
-        favicon.style.flexShrink = '0';
-        favicon.style.objectFit = 'contain';
+        favicon.style.width = '20px'; // Increased from 16px
+        favicon.style.height = '20px';
+        favicon.style.marginRight = '8px'; // Increased spacing
         
         // Remove lazy loading for better stability
         favicon.decoding = 'sync';
@@ -340,7 +405,8 @@ function renderTabs(tabs) {
         }
         
         const closeButton = document.createElement('span');
-        closeButton.textContent = '×';
+        closeButton.innerHTML = '&times;'; // Using HTML entity for better rendering
+        closeButton.className = 'close-tab';
         closeButton.style.marginLeft = '5px';
         closeButton.onclick = (e) => {
             e.stopPropagation();
