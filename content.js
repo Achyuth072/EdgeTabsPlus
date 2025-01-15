@@ -12,24 +12,12 @@ const CONFIG = {
     }
 };
 
+
 // Step 1: Add Overlay HTML and CSS
-// Create a logging overlay(hidden by default)
+// Create a logging overlay (hidden by default)
 const logOverlay = document.createElement('div');
 logOverlay.id = 'log-overlay';
-logOverlay.style.position = 'fixed';
-logOverlay.style.bottom = '40px';
-logOverlay.style.left = '0';
-logOverlay.style.width = '100%';
-logOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-logOverlay.style.color = 'white';
-logOverlay.style.fontFamily = 'monospace';
-logOverlay.style.fontSize = '12px';
-logOverlay.style.padding = '5px';
-logOverlay.style.zIndex = '2147483647'; // Highest possible z-index
-logOverlay.style.overflowY = 'auto';
-logOverlay.style.maxHeight = '100px';
-logOverlay.style.whiteSpace = 'pre-wrap';
-logOverlay.style.display = 'none'; // Hidden by default
+logOverlay.style.display = 'none'; 
 document.body.appendChild(logOverlay);
 
 // Function to add logs to the overlay
@@ -42,20 +30,14 @@ function addLog(message) {
 
 // Create a toggle button with Edge-like styling
 const toggleButton = document.createElement('button');
+toggleButton.id = 'log-toggle-button'; // Add an ID for styling
 toggleButton.textContent = '📜'; // Use an icon or text
-toggleButton.style.position = 'fixed';
-toggleButton.style.bottom = '100px';
-toggleButton.style.right = '10px';
-toggleButton.style.zIndex = '2147483647';
-toggleButton.style.backgroundColor = '#0078D7'; // Edge's blue color
-toggleButton.style.color = 'white';
-toggleButton.style.border = 'none';
-toggleButton.style.borderRadius = '50%';
-toggleButton.style.width = '40px';
-toggleButton.style.height = '40px';
-toggleButton.style.cursor = 'pointer';
-toggleButton.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
 document.body.appendChild(toggleButton);
+
+// Toggle log overlay visibility
+toggleButton.onclick = () => {
+    logOverlay.style.display = logOverlay.style.display === 'none' ? 'block' : 'none';
+};
 
 // Function to get favicon URL with timeout
 function getFaviconUrl(tabId, timeout = 2000) {
@@ -75,10 +57,23 @@ function getFaviconUrl(tabId, timeout = 2000) {
     });
 }
 
-// Toggle log overlay visibility
-toggleButton.onclick = () => {
-    logOverlay.style.display = logOverlay.style.display === 'none' ? 'block' : 'none';
-};
+// Function to get favicon URL with timeout
+function getFaviconUrl(tabId, timeout = 2000) {
+    return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+            clearTimeout(timeoutId);
+            reject(new Error('Timeout'));
+        }, timeout);
+        chrome.runtime.sendMessage({ action: 'getFaviconUrl', tabId: tabId }, function(response) {
+            clearTimeout(timeoutId);
+            if (response && response.favIconUrl) {
+                resolve(response.favIconUrl);
+            } else {
+                reject(new Error('No favicon URL available'));
+            }
+        });
+    });
+}
 
 // Keep favicon cache for performance
 const FAVICON_CACHE = new Map();
@@ -139,6 +134,45 @@ style.textContent = `
     .tab-item {
         scroll-snap-align: start;
         padding: 2px 8px; /* Increase horizontal padding */
+    }
+        /* Log Overlay Styles */
+    #log-overlay {
+        position: fixed;
+        bottom: 40px; /* Position above the tab strip */
+        left: 0;
+        width: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        color: white;
+        font-family: monospace;
+        font-size: 12px;
+        padding: 5px;
+        z-index: 2147483647; /* Highest possible z-index */
+        overflow-y: auto;
+        max-height: 100px;
+        white-space: pre-wrap;
+        display: none; /* Hidden by default */
+        border-top: 1px solid rgba(255, 255, 255, 0.1); /* Add a subtle border */
+    }
+
+    /* Toggle Button Styles */
+    #log-toggle-button {
+        position: fixed;
+        bottom: 100px;
+        right: 10px;
+        z-index: 2147483647;
+        background-color: #0078D7; /* Edge's blue color */
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        outline: none; /* Remove focus outline */
+    }
+
+    #log-toggle-button:active {
+        transform: scale(0.95); /* Add a slight press effect */
     }
 `;
 document.head.appendChild(style);
