@@ -102,7 +102,7 @@ tabStrip.style.transform = 'translate3d(0,0,0)';
 const style = document.createElement('style');
 style.textContent = `
     #edgetabs-plus-strip,
-    #edgetabs-plus-strip * {
+    #edgetabs-plus-strip *:not(.close-tab):not(#add-tab) {
         pointer-events: auto;
         touch-action: auto;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif !important;
@@ -155,10 +155,10 @@ style.textContent = `
 
     /* Enhanced close button style */
     .close-tab {
-        min-width: 28px !important; 
-        min-height: 28px !important;
-        font-size: 26px !important; 
-        font-weight: 700 !important; /* Made bolder */
+        min-width: 24px !important; 
+        min-height: 24px !important;
+        font-size: 16px !important;
+        font-weight: 800 !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -167,12 +167,14 @@ style.textContent = `
         color: #666 !important;
         cursor: pointer !important;
         padding: 0 !important;
-        line-height: 1 !important;
+        line-height: 0.7 !important; /* Adjusted for larger font */
     }
 
     /* Add hover effect for close button */
     .close-tab:hover {
-        background-color: rgba(0, 0, 0, 0.1) !important;
+        background-color: rgba(0, 0, 0, 0.05) !important; /* More subtle */
+        border-radius: 50% !important; /* Circular hover effect */
+        transition: background-color 0.2s ease !important; /* Smooth transition */
     }
 
     /* Update title span style to prevent overlap */
@@ -186,19 +188,19 @@ style.textContent = `
 
     /* Enhanced add button style */
     #add-tab {
-        min-width: 32px !important;
-        min-height: 32px !important;
-        font-size: 32px !important;
-        font-weight: 500 !important;
-        font-family: system-ui !important;
-        line-height: 1 !important;
-        color: #666 !important;
-        padding: 4px !important;
-        opacity: 0.85 !important;
+        min-width: 24px !important;
+        min-height: 24px !important;
+        font-size: 24px !important;
+        font-weight: 700 !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         margin-left: 8px !important;
+        padding-left: 12px !important; /* Add padding after separator */
+        padding-right: 12px !important; /* Balance padding */
+        border-left: 1px solid #ddd !important; /* Vertical separator */
+        border-radius: 0 !important; /* Remove rounded corners */
+        background-color: #f1f1f1 !important;
     }
 
         /* Log Overlay Styles */
@@ -257,19 +259,17 @@ tabsList.style.width = '100%';
 
 // Create add button with pointer events enabled
 const addTabButton = document.createElement('button');
+addTabButton.id = 'add-tab'; // Add this line
 addTabButton.innerHTML = '&#43;'; // Using HTML entity for plus sign
 addTabButton.style.pointerEvents = 'auto';
 addTabButton.style.marginLeft = 'auto';
 addTabButton.style.background = 'none';
 addTabButton.style.border = 'none';
-addTabButton.style.fontSize = '20px';
 addTabButton.style.cursor = 'pointer';
 
 // Update add tab button styles
 addTabButton.style.marginLeft = 'auto';
 addTabButton.style.flexShrink = '0';
-addTabButton.style.width = '32px';
-addTabButton.style.height = '32px';
 addTabButton.style.display = 'flex';
 addTabButton.style.alignItems = 'center';
 addTabButton.style.justifyContent = 'center';
