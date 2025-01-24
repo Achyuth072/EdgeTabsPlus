@@ -5,7 +5,8 @@ const defaultSettings = {
     autoHide: true,
     scrollThreshold: 50,
     minTabWidth: 48,
-    maxTabWidth: 180
+    maxTabWidth: 180,
+    retainScrollPosition: true
 };
 
 // Load settings
