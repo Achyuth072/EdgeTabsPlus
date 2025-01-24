@@ -12,6 +12,10 @@ const CONFIG = {
     }
 };
 
+// Add a setting for scroll behavior
+const SETTINGS = {
+    retainScrollPosition: true // Can be toggled in settings
+};
 
 // Step 1: Add Overlay HTML and CSS
 // Create a logging overlay (hidden by default)
@@ -31,31 +35,13 @@ function addLog(message) {
 // Create a toggle button with Edge-like styling
 const toggleButton = document.createElement('button');
 toggleButton.id = 'log-toggle-button'; // Add an ID for styling
-toggleButton.textContent = '📜'; // Use an icon or text
+toggleButton.textContent = '📜';
 document.body.appendChild(toggleButton);
 
 // Toggle log overlay visibility
 toggleButton.onclick = () => {
     logOverlay.style.display = logOverlay.style.display === 'none' ? 'block' : 'none';
 };
-
-// Function to get favicon URL with timeout
-function getFaviconUrl(tabId, timeout = 2000) {
-    return new Promise((resolve, reject) => {
-        const timeoutId = setTimeout(() => {
-            clearTimeout(timeoutId);
-            reject(new Error('Timeout'));
-        }, timeout);
-        chrome.runtime.sendMessage({ action: 'getFaviconUrl', tabId: tabId }, function(response) {
-            clearTimeout(timeoutId);
-            if (response && response.favIconUrl) {
-                resolve(response.favIconUrl);
-            } else {
-                reject(new Error('No favicon URL available'));
-            }
-        });
-    });
-}
 
 // Function to get favicon URL with timeout
 function getFaviconUrl(tabId, timeout = 2000) {
@@ -125,21 +111,30 @@ style.textContent = `
         overflow-y: hidden;
         gap: 2px;  /* Reduce gap between tabs */
         scroll-snap-type: x mandatory;
+        scroll-behavior: smooth;        
         -webkit-overflow-scrolling: touch;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
         flex: 1;
         margin: 0;
         padding: 0;
         display: flex;
     }
     .tab-item {
-        min-height: 40px !important;
-        padding: 8px 12px !important;
-        border-radius: 8px !important;
         position: relative !important;
         display: flex !important;
         align-items: center !important;
-        justify-content: space-between !important; /* Changed from flex-start to space-between */
-        gap: 8px !important;
+        padding: 8px 28px 8px 4px !important;
+        gap: 4px !important;
+        overflow: hidden !important;
+        border-radius: 8px !important;
+        justify-content: space-between !important;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+        transition: width 0.3s ease-out !important;
+        /* Remove width constraints - handled by CSS custom properties */
+        width: var(--tab-width, 180px) !important;
+        flex: 0 0 var(--tab-width, 180px) !important;
     }
 
     /* Add touch-friendly area */
@@ -155,19 +150,21 @@ style.textContent = `
 
     /* Enhanced close button style */
     .close-tab {
-        min-width: 24px !important; 
-        min-height: 24px !important;
-        font-size: 16px !important;
-        font-weight: 800 !important;
+        position: absolute !important;
+        right: 2px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: 24px !important;
+        height: 24px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        margin-left: auto !important; /* Push to right */
-        margin-right: -4px !important; /* Move slightly more right */
+        background: transparent !important;
+        border-radius: 50% !important;
+        font-size: 18px !important;
+        line-height: 1 !important;
         color: #666 !important;
-        cursor: pointer !important;
-        padding: 0 !important;
-        line-height: 0.7 !important; /* Adjusted for larger font */
+        z-index: 1 !important;
     }
 
     /* Add hover effect for close button */
@@ -242,6 +239,100 @@ style.textContent = `
     #log-toggle-button:active {
         transform: scale(0.95); /* Add a slight press effect */
     }
+
+    /* Hide text when tab is at minimum width */
+    .tab-item.minimal span:not(.close-tab):not(img) {
+        display: none !important;
+    }
+
+    #tabs-list {
+        scroll-behavior: auto !important; /* Remove smooth scrolling for snappier response */
+        -webkit-overflow-scrolling: touch !important;
+        scroll-snap-type: none !important; /* Remove scroll snap for smoother scrolling */
+        overflow-x: auto !important;
+        /* ... rest of your existing styles ... */
+    }
+    
+    /* When tab is at minimum width - updated to 90px */
+    .tab-item.minimal {
+        min-width: 90px !important;
+        width: 90px !important;
+        max-width: 90px !important;
+        flex-basis: 90px !important;
+        background-color: #f8f9fa !important;
+    }
+
+    /* Base tab styles with high specificity and enhanced transitions */
+    #edgetabs-plus-strip .tab-item,
+    #tabs-list .tab-item {
+        width: var(--tab-width, 180px) !important;
+        position: relative !important;
+        display: flex !important;
+        align-items: center !important;
+        padding: 8px 28px 8px 8px !important;
+        gap: 4px !important;
+        overflow: hidden !important;
+        flex: 0 0 var(--tab-width, 180px) !important;
+        transform: translateZ(0) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        will-change: width, transform !important;
+        contain: layout style size !important;
+    }
+
+    /* Single tab state */
+    #edgetabs-plus-strip .tab-item.single-tab,
+    #tabs-list .tab-item.single-tab {
+        width: 180px !important;
+        flex: 0 0 180px !important;
+    }
+
+    /* Minimal state (5+ tabs) */
+    #edgetabs-plus-strip .tab-item.minimal,
+    #tabs-list .tab-item.minimal {
+        width: 90px !important;
+        flex: 0 0 90px !important;
+    }
+
+    /* Enhanced title truncation with smooth transitions */
+    #edgetabs-plus-strip .tab-item span:not(.close-tab) {
+        flex: 1 !important;
+        min-width: 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        pointer-events: none !important;
+        transition: opacity 0.3s ease-out !important;
+        will-change: opacity, transform !important;
+    }
+
+    /* Minimal state styles with smoother transitions */
+    #edgetabs-plus-strip .tab-item.minimal,
+    #tabs-list .tab-item.minimal {
+        width: 90px !important;
+        min-width: 90px !important;
+        max-width: 90px !important;
+        padding-right: 24px !important;
+        flex-basis: 90px !important;
+    }
+
+    /* Enhanced text fade for minimal state */
+    #edgetabs-plus-strip .tab-item.minimal span:not(.close-tab) {
+        opacity: 0.5 !important;
+        transform: translateX(-5px) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    /* Optimized favicon handling for minimal state */
+    #edgetabs-plus-strip .tab-item.minimal img {
+        margin-right: 0 !important;
+        transform: translateX(4px) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    /* Active tab emphasis */
+    #edgetabs-plus-strip .tab-item.active {
+        background-color: rgba(0, 0, 0, 0.05) !important;
+    }
 `;
 document.head.appendChild(style);
 
@@ -283,26 +374,185 @@ addTabButton.onclick = (e) => {
     chrome.runtime.sendMessage({ action: 'createTab' });
 };
 
-// In content.js, add tab width calculation
 function calculateTabWidth(tabCount) {
-    const minWidth = 48; // More reasonable minimum width
-    const maxWidth = 180; // Maximum width for better readability
-    const screenWidth = window.innerWidth;
-    const padding = 48; // Account for add button and margins
-    const availableWidth = screenWidth - padding;
-    const calculatedWidth = Math.floor(availableWidth / tabCount);
-    return Math.min(maxWidth, Math.max(minWidth, calculatedWidth));
+    const TAB_WIDTHS = {
+        1: 180, // Single tab
+        2: 160, // Two tabs
+        3: 120, // Three tabs
+        4: 100, // Four tabs
+        5: 90   // Five or more tabs
+    };
+
+    // If we have more than 5 tabs, return the minimum width (90px)
+    if (tabCount > 5) {
+        return TAB_WIDTHS[5];
+    }
+
+    // Otherwise return the exact width for this number of tabs
+    return TAB_WIDTHS[tabCount];
 }
+
+// Update tab width styling to match the spec
+const tabWidthStyles = document.createElement('style');
+tabWidthStyles.textContent = `
+    /* Base tab styles - no minimum width constraint */
+    .tab-item {
+        width: var(--tab-width, 180px) !important;
+        min-width: auto !important;
+        max-width: none !important;
+        flex: 0 0 var(--tab-width, 180px) !important;
+        transition: width 0.3s ease-out, flex-basis 0.3s ease-out !important;
+    }
+
+    /* Remove any minimal width overrides */
+    .tab-item.minimal {
+        width: 90px !important;
+        flex: 0 0 90px !important;
+    }
+`;
+document.head.appendChild(tabWidthStyles);
+
+function updateScrollSnapPoints() {
+    const tabsList = document.getElementById('tabs-list');
+    const tabs = tabsList.getElementsByClassName('tab-item');
+    let snapPoints = '';
+    
+    Array.from(tabs).forEach((tab, index) => {
+        const position = (tab.offsetWidth * index);
+        snapPoints += `${position}px `;
+    });
+    
+    tabsList.style.scrollSnapPoints = `x mandatory ${snapPoints}`;
+}
+window.addEventListener('resize', () => {
+    updateScrollSnapPoints();
+    updateMinimalTabs();
+});
+
+function updateMinimalTabs() {
+    const tabs = document.querySelectorAll('.tab-item');
+    const TAB_THRESHOLD = 5;
+    
+    tabs.forEach(tab => {
+        // Remove both classes first
+        tab.classList.remove('minimal', 'single-tab');
+        
+        // Apply appropriate class based on tab count
+        if (tabs.length === 1) {
+            tab.classList.add('single-tab');
+        } else if (tabs.length >= TAB_THRESHOLD) {
+            tab.classList.add('minimal');
+        }
+    });
+}
+
+// Add styles for different tab states
+const tabStateStyles = document.createElement('style');
+tabStateStyles.textContent = `
+    /* Special tab width states with transitions */
+    .tab-item.single-tab {
+        min-width: 180px !important;
+        width: 180px !important;
+        max-width: 180px !important;
+        flex-basis: 180px !important;
+    }
+
+    .tab-item.single-tab span:not(.close-tab) {
+        opacity: 1 !important;
+        max-width: 140px !important;
+    }
+
+    .tab-item:not(.minimal):not(.single-tab) {
+        transition: width 0.3s ease-out !important;
+    }
+
+    .tab-item.minimal span:not(.close-tab) {
+        max-width: 50px !important;
+        opacity: 0.85 !important;
+    }
+`;
+document.head.appendChild(tabStateStyles);
+
+// Add styles for better visual distinction
+const additionalStyles = document.createElement('style');
+additionalStyles.textContent = `
+    /* Enhanced tab strip styles */
+    #edgetabs-plus-strip {
+        background-color: #f0f2f4 !important;
+        border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
+        box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05) !important;
+        padding: 4px 8px !important;
+    }
+
+    /* Base tab styles */
+    #edgetabs-plus-strip .tab-item {
+        background: linear-gradient(to bottom, #ffffff, #f8f9fa) !important;
+        border: 1px solid rgba(0, 0, 0, 0.1) !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        margin: 2px !important;
+        transition: all 0.2s ease-out !important;
+    }
+
+    /* Enhanced active tab styles */
+    #edgetabs-plus-strip .tab-item.active {
+        background: #ffffff !important;
+        border: 1px solid rgba(0, 0, 0, 0.2) !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+        position: relative !important;
+        z-index: 2 !important;
+        transform: translateY(-1px) scale(1.02) !important;
+    }
+
+    /* Active tab top border accent */
+    #edgetabs-plus-strip .tab-item.active::before {
+        content: '' !important;
+        position: absolute !important;
+        top: -1px !important;
+        left: -1px !important;
+        right: -1px !important;
+        height: 2px !important;
+        background-color: #0078D4 !important;
+        border-radius: 2px 2px 0 0 !important;
+    }
+
+    /* Active tab text emphasis */
+    #edgetabs-plus-strip .tab-item.active span:not(.close-tab) {
+        color: #000000 !important;
+        font-weight: 500 !important;
+    }
+`;
+document.head.appendChild(additionalStyles);
 
 // Tab rendering
 function renderTabs(tabs) {
     const tabWidth = calculateTabWidth(tabs.length);
+    const currentScrollPosition = tabsList.scrollLeft;
+    let activeTabId = null;
+    
+    // Find active tab before rendering
+    const activeTab = tabs.find(tab => tab.active);
+    if (activeTab) {
+        activeTabId = activeTab.id;
+    }
+    
     tabsList.innerHTML = '';
+    
     tabs.forEach(tab => {
         const tabItem = document.createElement('li');
         tabItem.className = 'tab-item';
-        tabItem.style.width = `${tabWidth}px`;
-        tabItem.style.minHeight = '40px'; // Minimum touch target height
+        tabItem.dataset.tabId = tab.id;
+        
+        // Set width using CSS custom property
+        if (tabs.length === 1) {
+            tabItem.classList.add('single-tab');
+        } else if (tabs.length >= 5) {
+            tabItem.classList.add('minimal');
+        } else {
+            // For 2-4 tabs, set exact width
+            tabItem.style.setProperty('--tab-width', `${tabWidth}px`);
+        }
+        
+        tabItem.style.minHeight = '40px';
         
         // Improved favicon handling
         const favicon = new Image();
@@ -390,22 +640,17 @@ function renderTabs(tabs) {
 
         // Append elements
         tabItem.appendChild(favicon);
-        tabItem.appendChild(titleSpan);
         
-        // Rest of your existing tab styling
-        tabItem.style.padding = '2px 5px';
-        tabItem.style.cursor = 'pointer';
-        tabItem.style.height = '36px';
-        tabItem.style.display = 'flex';
-        tabItem.style.alignItems = 'center';
-        tabItem.style.justifyContent = 'flex-start'; // Align items to start
+        const titleContainer = document.createElement('div');
+        titleContainer.style.flex = '1';
+        titleContainer.style.minWidth = '0';
+        titleContainer.style.overflow = 'hidden';
+        titleContainer.appendChild(titleSpan);
         
-        if (tab.active) {
-            tabItem.style.backgroundColor = '#ddd';
-        }
+        tabItem.appendChild(titleContainer);
         
         const closeButton = document.createElement('span');
-        closeButton.innerHTML = '&times;'; // Using HTML entity for better rendering
+        closeButton.innerHTML = '×'; // Using HTML entity for better rendering
         closeButton.className = 'close-tab';
         closeButton.style.marginLeft = '5px';
         closeButton.onclick = (e) => {
@@ -413,14 +658,21 @@ function renderTabs(tabs) {
             chrome.runtime.sendMessage({ action: 'closeTab', tabId: tab.id });
         };
         
-        tabItem.onclick = () => chrome.runtime.sendMessage({ 
-            action: 'activateTab', 
-            tabId: tab.id 
-        });
+        tabItem.onclick = () => handleTabClick(tab);
+        
+        if (tab.active) {
+            tabItem.classList.add('active');
+            // Defer scrolling to after render
+            requestAnimationFrame(() => {
+                scrollToActiveTab(tab.id);
+            });
+        }
         
         tabItem.appendChild(closeButton);
         tabsList.appendChild(tabItem);
     });
+    
+    updateMinimalTabs();
 }
 
 // Initialize
@@ -453,62 +705,170 @@ function handleScroll() {
 window.addEventListener('scroll', handleScroll, { passive: true });
 
 // Message listener
+let lastTabsState = null;
+
 chrome.runtime.onMessage.addListener((message) => {
     if (message.action === 'tabsUpdated' && message.tabs) {
-        renderTabs(message.tabs);
+        // Compare with last state to prevent unnecessary updates
+        const newState = JSON.stringify(message.tabs);
+        if (newState !== lastTabsState) {
+            lastTabsState = newState;
+            renderTabs(message.tabs);
+        }
     }
 });
 
 // Request initial tabs
 chrome.runtime.sendMessage({ action: 'getTabs' });
 
-// Add touch scroll handling
-function updateTouchScroll() {
+// Optimized touch scroll handling with hardware acceleration
+function setupTouchScroll() {
     let startX;
     let scrollLeft;
-    let isTabsDragging = false;
+    let isDragging = false;
     let lastX;
+    let lastTime;
     let velocity = 0;
-    let animationFrame;
-
-    tabsList.addEventListener('touchstart', (e) => {
-        isTabsDragging = true;
+    let momentumRAF;
+    
+    // Use transform for hardware acceleration
+    tabsList.style.transform = 'translate3d(0,0,0)';
+    tabsList.style.willChange = 'scroll-position';
+    tabsList.style.overscrollBehavior = 'contain';
+    
+    function onTouchStart(e) {
+        isDragging = true;
         startX = e.touches[0].pageX;
         lastX = startX;
+        lastTime = Date.now();
         scrollLeft = tabsList.scrollLeft;
         velocity = 0;
-        cancelAnimationFrame(animationFrame);
-    }, { passive: true });
-
-    tabsList.addEventListener('touchmove', (e) => {
-        if (!isTabsDragging) return;
+        
+        cancelAnimationFrame(momentumRAF);
+        
+        // Prepare for smooth scrolling
+        tabsList.style.scrollBehavior = 'auto';
+    }
+    
+    function onTouchMove(e) {
+        if (!isDragging) return;
         
         const x = e.touches[0].pageX;
-        const dx = x - lastX;
+        const deltaX = x - lastX;
+        const currentTime = Date.now();
+        const deltaTime = currentTime - lastTime;
+        
+        // Calculate velocity (pixels per millisecond)
+        if (deltaTime > 0) {
+            velocity = (deltaX / deltaTime) * 1.5; // Increased sensitivity
+        }
+        
+        // Update scroll position with hardware acceleration
+        requestAnimationFrame(() => {
+            tabsList.scrollLeft = scrollLeft - (x - startX);
+        });
+        
         lastX = x;
+        lastTime = currentTime;
+    }
+    
+    function onTouchEnd() {
+        if (!isDragging) return;
+        isDragging = false;
         
-        // Update velocity
-        velocity = dx * 0.8 + velocity * 0.2;
-        
-        tabsList.scrollLeft = scrollLeft - (x - startX);
-    }, { passive: true });
-
-    tabsList.addEventListener('touchend', () => {
-        if (!isTabsDragging) return;
-        
-        isTabsDragging = false;
-        
-        // Add momentum scrolling
+        // Enhanced momentum scrolling
         function momentum() {
-            if (Math.abs(velocity) > 0.1) {
-                tabsList.scrollLeft -= velocity;
-                velocity *= 0.95;
-                animationFrame = requestAnimationFrame(momentum);
+            if (Math.abs(velocity) > 0.01) {
+                requestAnimationFrame(() => {
+                    tabsList.scrollLeft -= velocity * 16; // 16ms is approx. one frame
+                    velocity *= 0.95; // Decay factor
+                    momentumRAF = requestAnimationFrame(momentum);
+                });
+            } else {
+                tabsList.style.scrollBehavior = 'smooth';
             }
         }
-        momentum();
-    }, { passive: true });
+        
+        if (Math.abs(velocity) > 0.1) {
+            momentum();
+        } else {
+            tabsList.style.scrollBehavior = 'smooth';
+        }
+    }
+    
+    // Add event listeners with options for better performance
+    tabsList.addEventListener('touchstart', onTouchStart, { passive: true });
+    tabsList.addEventListener('touchmove', onTouchMove, { passive: true });
+    tabsList.addEventListener('touchend', onTouchEnd, { passive: true });
+    tabsList.addEventListener('touchcancel', onTouchEnd, { passive: true });
 }
 
-// Call the updated touch scroll function
-updateTouchScroll();
+// Initialize touch scrolling
+setupTouchScroll();
+
+// Update scrollToActiveTab function for better position calculation
+function scrollToActiveTab(tabId) {
+    if (!SETTINGS.retainScrollPosition) return;
+    
+    const tabsList = document.getElementById('tabs-list');
+    const activeTab = tabsList.querySelector(`[data-tab-id="${tabId}"]`);
+    
+    if (activeTab) {
+        // Get current positions and dimensions
+        const tabsListRect = tabsList.getBoundingClientRect();
+        const tabRect = activeTab.getBoundingClientRect();
+        const tabLeft = activeTab.offsetLeft;
+        const tabWidth = activeTab.offsetWidth;
+        const listWidth = tabsList.offsetWidth;
+        const totalWidth = tabsList.scrollWidth;
+        
+        // Calculate the visible margins
+        const leftMargin = Math.max(listWidth * 0.1, tabWidth); // At least one tab width or 10% of list
+        const rightMargin = Math.max(listWidth * 0.1, tabWidth);
+        
+        let scrollPosition;
+        
+        // Calculate ideal center position
+        const idealCenter = tabLeft - (listWidth - tabWidth) / 2;
+        
+        // Adjust position based on tab location
+        if (tabLeft < leftMargin) {
+            // Tab is near the start - align with left margin
+            scrollPosition = Math.max(0, tabLeft - leftMargin);
+        } else if (tabLeft + tabWidth > totalWidth - rightMargin) {
+            // Tab is near the end - align with right margin
+            scrollPosition = Math.min(
+                totalWidth - listWidth,
+                tabLeft - (listWidth - tabWidth - rightMargin)
+            );
+        } else {
+            // Tab is in the middle - center it
+            scrollPosition = idealCenter;
+        }
+        
+        // Ensure scroll position is within bounds
+        scrollPosition = Math.max(0, Math.min(scrollPosition, totalWidth - listWidth));
+        
+        // Apply scroll with smooth behavior
+        tabsList.scrollTo({
+            left: scrollPosition,
+            behavior: 'smooth'
+        });
+    }
+}
+
+// Update tab click handler to ensure proper scroll timing
+function handleTabClick(tab) {
+    const tabId = tab.id;
+    chrome.runtime.sendMessage({ 
+        action: 'activateTab', 
+        tabId: tabId 
+    });
+    
+    // Use RAF for more reliable timing
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            scrollToActiveTab(tabId);
+        });
+    });
+}
