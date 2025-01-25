@@ -78,9 +78,6 @@ tabStrip.style.alignItems = 'center';
 tabStrip.style.padding = '0 10px';
 tabStrip.style.height = CONFIG.tabStrip.height;
 tabStrip.style.transition = `transform ${CONFIG.scroll.transformDuration} ease-out`;
-// Remove problematic styles
-// tabStrip.style.isolation = 'isolate';
-// tabStrip.style.touchAction = 'none';
 tabStrip.style.pointerEvents = 'none';
 tabStrip.style.transform = 'translate3d(0,0,0)';
 
