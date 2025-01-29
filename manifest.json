@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "EdgeTabs+",
-  "version": "0.5.5",
+  "version": "0.6",
   "description": "Adds a tab strip above the address bar in Edge for Android.",
-  "permissions": ["tabs", "activeTab","storage", "https://*/"],
+  "permissions": ["tabs", "activeTab", "storage", "https://*/"],
   "host_permissions": ["<all_urls>"],
   "options_page": "popup/settings.html",
   "background": {
@@ -11,8 +11,19 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>","https://www.google.com/s2/*"],
-      "js": ["content.js"],
+      "matches": ["<all_urls>", "https://www.google.com/s2/*"],
+      "js": [
+        "modules/namespace.js",
+        "modules/config.js",
+        "modules/logger.js",
+        "modules/styles.js",
+        "modules/faviconHandler.js",
+        "modules/uiComponents.js",
+        "modules/tabManager.js",
+        "modules/scrollHandler.js",
+        "modules/touchHandler.js",
+        "content.js"
+      ],
       "css": ["popup/styles.css"]
     }
   ],
