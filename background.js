@@ -5,74 +5,103 @@ function notifyTabsUpdated() {
             id: tab.id,
             title: tab.title || 'New Tab',
             active: tab.active,
-            favIconUrl: tab.favIconUrl,
-            url: tab.url
+            favIconUrl: '', // Let content script handle favicon resolution
+            url: tab.url || ''  // Always include URL for favicon resolution
         }));
-        console.log('Tabs Data:', tabData);
-        console.log('Sending tabs data:', tabData); // Debug log
+        console.log('Sending tabs data:', tabData);
         
-        // Send to all contexts
+        // Send to all contexts using proper method
         chrome.tabs.query({}, allTabs => {
             allTabs.forEach(tab => {
+                // Fix: Use chrome.tabs.sendMessage instead of chrome.runtime.sendMessage
                 chrome.tabs.sendMessage(tab.id, {
                     action: 'tabsUpdated',
                     tabs: tabData
-                }).catch(err => console.log(`Failed to send to tab ${tab.id}:`, err));
+                }).catch(err => {
+                    // Only log actual errors, not disconnected port errors
+                    if (!err.message.includes('receiving end does not exist')) {
+                        console.error(`Failed to send to tab ${tab.id}:`, err);
+                    }
+                });
             });
         });
     });
+}
+
+// Handle favicon URL requests with minimal processing
+async function getFaviconUrl(tabId) {
+    try {
+        const tab = await chrome.tabs.get(tabId);
+        // Return both URL and favIconUrl to let content script handle resolution
+        return { 
+            url: tab.url || '',
+            favIconUrl: tab.favIconUrl || ''
+        };
+    } catch (error) {
+        console.error('Error getting favicon URL:', error);
+        return { url: '', favIconUrl: '' };
+    }
 }
 
 // Handle tab creation with delay and error handling
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch(request.action) {
         case 'closeTab':
-            chrome.tabs.remove(request.tabId).then(notifyTabsUpdated);
+            chrome.tabs.remove(request.tabId)
+                .then(notifyTabsUpdated)
+                .catch(error => console.error('Failed to close tab:', error));
             break;
         case 'activateTab':
             chrome.tabs.update(request.tabId, { active: true })
-                .then(notifyTabsUpdated);
+                .then(notifyTabsUpdated)
+                .catch(error => console.error('Failed to activate tab:', error));
             break;
         case 'createTab':
             setTimeout(() => {
-                try {
-                    chrome.tabs.create({}).then(newTab => {
-                        chrome.tabs.update(newTab.id, { active: true });
-                        notifyTabsUpdated();
-                    });
-                } catch (error) {
-                    console.error('Failed to create tab:', error);
-                }
+                chrome.tabs.create({})
+                    .then(newTab => {
+                        return chrome.tabs.update(newTab.id, { active: true });
+                    })
+                    .then(notifyTabsUpdated)
+                    .catch(error => console.error('Failed to create tab:', error));
             }, 80);
             break;
         case 'getTabs':
-            notifyTabsUpdated(); // Send tabs data when requested
+            notifyTabsUpdated();
             break;
-        case 'getFaviconUrl': // New case for handling favicon URL requests
-        chrome.tabs.get(request.tabId, (tab) => {
-            if (tab && tab.favIconUrl) {
-                sendResponse({ favIconUrl: tab.favIconUrl });
-            } else {
-                sendResponse({ favIconUrl: null });
+        case 'getFaviconUrl':
+            if (request.tabId) {
+                getFaviconUrl(request.tabId)
+                    .then(sendResponse)
+                    .catch(error => {
+                        console.error('Failed to get favicon URL:', error);
+                        sendResponse({ url: '', favIconUrl: '' });
+                    });
+                return true; // Required for asynchronous sendResponse
             }
-        });
-        return true; // Required for asynchronous sendResponse
+            break;
     }
 });
 
-// Step 4: Handle tab updates for favicon changes
+// Enhanced tab update handling
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    // Specifically log favicon updates for debugging
     if (changeInfo.favIconUrl) {
         console.log('Favicon updated for tab:', tabId, changeInfo.favIconUrl);
-        notifyTabsUpdated();
     }
+    // Always notify of updates to ensure we don't miss any changes
+    notifyTabsUpdated();
 });
 
-// Keep track of tabs
-chrome.tabs.onCreated.addListener(notifyTabsUpdated);
-chrome.tabs.onRemoved.addListener(notifyTabsUpdated);
-chrome.tabs.onUpdated.addListener(notifyTabsUpdated);
+// Keep track of tabs with error handling
+const addTabListener = (event) => {
+    chrome.tabs[event].addListener(() => {
+        notifyTabsUpdated();
+    });
+};
 
-// Add listeners for tab activation
-chrome.tabs.onActivated.addListener(notifyTabsUpdated);
-chrome.tabs.onAttached.addListener(notifyTabsUpdated);
+// Set up tab event listeners
+['onCreated', 'onRemoved', 'onAttached', 'onActivated'].forEach(addTabListener);
+
+// Log extension startup
+console.log('EdgeTabs+ background script initialized');
