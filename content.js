@@ -46,6 +46,41 @@
         }
     }
 
+    // Listen for messages from popup
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (!window.EdgeTabsPlus) return;
+
+        const { logger, styles } = window.EdgeTabsPlus;
+
+        switch (message.action) {
+            case 'updateTheme':
+                try {
+                    document.body.classList.toggle('dark-theme', message.isDark);
+                    logger.addLog(`Theme updated to ${message.isDark ? 'dark' : 'light'}`);
+                } catch (error) {
+                    logger.error('Failed to update theme:', error);
+                }
+                break;
+
+            case 'toggleUpdate':
+                try {
+                    if (message.key === 'showTabStrip') {
+                        const tabStrip = document.getElementById('tab-strip');
+                        if (tabStrip) {
+                            tabStrip.style.display = message.value ? 'flex' : 'none';
+                            logger.addLog(`Tab strip visibility set to: ${message.value}`);
+                        }
+                    } else if (message.key === 'autoHide') {
+                        EdgeTabsPlus.scrollHandler.setAutoHide(message.value);
+                        logger.addLog(`Auto-hide set to: ${message.value}`);
+                    }
+                } catch (error) {
+                    logger.error('Failed to handle toggle update:', error);
+                }
+                break;
+        }
+    });
+
     // Start initialization
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initialize);
