@@ -1,58 +1,75 @@
-// Get references to the DOM elements
-const tabsList = document.getElementById('tabs-list');
-const addTabButton = document.getElementById('add-tab');
-const settingsBtn = document.getElementById('settings-btn');
+// Wait for EdgeTabsPlus namespace to be available
+document.addEventListener('DOMContentLoaded', () => {
+    const { tabManager, config, logger } = window.EdgeTabsPlus;
 
-// Function to create a new tab via background script
-addTabButton.addEventListener('click', () => {
-    chrome.runtime.sendMessage({ action: 'createTab' });
-});
+    // Initialize required modules
+    logger.init();
+    config.init();
+    tabManager.init();
 
-settingsBtn.addEventListener('click', () => {
-    chrome.runtime.openOptionsPage();
-});
+    // Get references to the DOM elements
+    const addTabButton = document.getElementById('add-tab');
+    const settingsBtn = document.getElementById('settings-btn');
 
-// Function to render the list of tabs with error handling
-function renderTabs(tabs) {
-    try {
-        tabsList.innerHTML = '';
-        chrome.tabs.query({ currentWindow: true, active: true }, (activeTabs) => {
-            const activeTabId = activeTabs[0]?.id;
-            
-            tabs.forEach(tab => {
-                const tabItem = document.createElement('li');
-                tabItem.className = 'tab-item';
-                tabItem.textContent = tab.title || 'New Tab';
-                
-                if (tab.id === activeTabId) {
-                    tabItem.classList.add('active');
-                }
+    // Add tab button handler with long-press support
+    let pressTimer;
+    addTabButton.addEventListener('mousedown', () => {
+        pressTimer = setTimeout(() => {
+            // Long press - open menu
+            chrome.action.openPopup();
+        }, 500);
+    });
 
-                const closeButton = document.createElement('span');
-                closeButton.className = 'close-tab';
-                closeButton.textContent = 'x';
-                closeButton.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    chrome.tabs.remove(tab.id);
-                });
+    addTabButton.addEventListener('mouseup', () => {
+        clearTimeout(pressTimer);
+        // Quick click - just create new tab
+        chrome.runtime.sendMessage({ action: 'createTab' });
+    });
 
-                tabItem.addEventListener('click', () => {
-                    chrome.tabs.update(tab.id, { active: true });
-                });
+    addTabButton.addEventListener('mouseleave', () => {
+        clearTimeout(pressTimer);
+    });
 
-                tabItem.appendChild(closeButton);
-                tabsList.appendChild(tabItem);
-            });
+    // Touch event support
+    addTabButton.addEventListener('touchstart', (e) => {
+        pressTimer = setTimeout(() => {
+            chrome.action.openPopup();
+        }, 500);
+    });
+
+    addTabButton.addEventListener('touchend', (e) => {
+        clearTimeout(pressTimer);
+        if (e.cancelable) {
+            e.preventDefault();
+            chrome.runtime.sendMessage({ action: 'createTab' });
+        }
+    });
+
+    addTabButton.addEventListener('touchcancel', () => {
+        clearTimeout(pressTimer);
+    });
+
+    // Settings button handler - opens new menu
+    settingsBtn.addEventListener('click', () => {
+        chrome.action.openPopup();
+    });
+
+    // Initial tab load
+    chrome.tabs.query({ currentWindow: true }, (tabs) => {
+        tabManager.renderTabs(tabs).catch(error => {
+            logger.error('Failed to render initial tabs:', error);
         });
-    } catch (error) {
-        console.error('Failed to render tabs:', error);
-    }
-}
+    });
 
-// Initialize and listen for updates
-chrome.tabs.query({ currentWindow: true }, renderTabs);
-chrome.runtime.onMessage.addListener((request) => {
-    if (request.action === 'tabsUpdated') {
-        chrome.tabs.query({ currentWindow: true }, renderTabs);
-    }
+    // Listen for tab updates
+    chrome.runtime.onMessage.addListener((request) => {
+        if (request.action === 'tabsUpdated') {
+            tabManager.renderTabs(request.tabs).catch(error => {
+                logger.error('Failed to render updated tabs:', error);
+            });
+        }
+    });
+
+    // Log successful initialization
+    logger.addLog('Popup interface initialized successfully');
 });
