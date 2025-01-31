@@ -5,6 +5,23 @@
     box-sizing: border-box;
 }
 
+/* Theme transition for all color properties */
+body {
+    transition: background-color 0.3s ease,
+                color 0.3s ease;
+}
+
+/* Smooth transitions for themed elements */
+.menu-container,
+.toggle-track,
+.toggle-thumb,
+.action-button,
+.theme-toggle,
+.toggle-action i,
+.toggle-action span {
+    transition: all 0.3s ease;
+}
+
 :root {
     /* Light theme colors */
     --background-color: #ffffff;
@@ -122,18 +139,53 @@ body {
     align-items: center;
     justify-content: center;
     -webkit-tap-highlight-color: transparent;
+    position: relative;
+    overflow: hidden;
 }
 
-.theme-toggle:hover {
+.theme-toggle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background-color: var(--hover-color);
+    border-radius: 50%;
+    transform: scale(0);
+    transition: transform 0.3s ease;
 }
 
-.theme-toggle:active {
-    transform: scale(0.9);
+.theme-toggle:hover::before {
+    transform: scale(1);
+}
+
+.theme-toggle:active::before {
+    transform: scale(1.2);
+    opacity: 0.7;
 }
 
 .theme-toggle i {
     font-size: 20px;
+    z-index: 1;
+    transform-origin: center;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.2s ease;
+}
+
+.theme-toggle:active i {
+    transform: scale(0.85);
+}
+
+/* Theme toggle icon animation */
+.theme-toggle i.rotate-out {
+    transform: rotate(225deg);
+    opacity: 0;
+}
+
+.theme-toggle i.rotate-in {
+    transform: rotate(0);
+    opacity: 1;
 }
 
 /* Quick actions section */
@@ -326,4 +378,26 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Ripple effect for theme toggle */
+@keyframes ripple {
+    0% {
+        transform: scale(0);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+.ripple {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: var(--toggle-active);
+    border-radius: 50%;
+    animation: ripple 1s ease-out forwards;
+    pointer-events: none;
 }

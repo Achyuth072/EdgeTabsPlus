@@ -17,6 +17,27 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.toggle('dark-theme', isDark);
         chrome.storage.sync.set({ isDarkMode: isDark });
         
+        // Update theme toggle icon with animation
+        const themeIcon = themeToggle.querySelector('i');
+        themeIcon.textContent = isDark ? 'dark_mode' : 'light_mode';
+        themeIcon.classList.add('rotate-out');
+        
+        // Trigger rotation animation
+        setTimeout(() => {
+            themeIcon.classList.remove('rotate-out');
+            themeIcon.classList.add('rotate-in');
+            // Remove animation classes after transition
+            setTimeout(() => {
+                themeIcon.classList.remove('rotate-in');
+            }, 300);
+        }, 150);
+
+        // Add ripple effect
+        const ripple = document.createElement('div');
+        ripple.className = 'ripple';
+        themeToggle.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 1000);
+        
         // Update tab strip theme
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]) {
