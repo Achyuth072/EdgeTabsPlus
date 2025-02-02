@@ -75,7 +75,7 @@ Learning to build a Microsoft Edge extension that adds a bottom-positioned tab s
 - Performance optimizations
 - Tab state persistence
 
-### Module Architecture
+<!-- ### Module Architecture
 
 ```bash
 modules/
@@ -88,11 +88,11 @@ modules/
 ├── touchHandler.js # Touch interactions
 ├── styles.js      # CSS management
 └── uiComponents.js # UI components
-```
+``` -->
 
 ### Requirements
 
-- Microsoft Edge Android Canary
+- Microsoft Edge Android Canary; at the moment crx files aren't supported by stable Edge.
 
 ## Technical Details
 
