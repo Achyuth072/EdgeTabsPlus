@@ -80,6 +80,34 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 return true; // Required for asynchronous sendResponse
             }
             break;
+        
+        case 'syncTheme':
+            console.log('Broadcasting theme change:', request.isDark);
+            // Broadcast theme change to all tabs
+            chrome.tabs.query({}, allTabs => {
+                Promise.all(allTabs.map(tab => {
+                    return chrome.tabs.sendMessage(tab.id, {
+                        action: 'updateTheme',
+                        isDark: request.isDark
+                    }).catch(err => {
+                        // Only log non-disconnected port errors
+                        if (!err.message.includes('receiving end does not exist')) {
+                            console.error(`Failed to sync theme to tab ${tab.id}:`, err);
+                        }
+                        // Return null for failed updates
+                        return null;
+                    });
+                })).then(results => {
+                    // Log successful updates
+                    const successCount = results.filter(r => r && r.success).length;
+                    console.log(`Theme sync completed. Updated ${successCount}/${allTabs.length} tabs`);
+                });
+            });
+            // Send immediate response
+            if (sendResponse) {
+                sendResponse({ success: true });
+            }
+            return true; // Keep message channel open
     }
 });
 

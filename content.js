@@ -54,18 +54,26 @@
         }
     }
 
-    // Listen for messages from popup
+    // Listen for messages from popup and background
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (!window.EdgeTabsPlus) return;
+        if (!window.EdgeTabsPlus) {
+            console.error('EdgeTabsPlus not initialized for message:', message);
+            return;
+        }
 
-        const { logger, styles } = window.EdgeTabsPlus;
+        const { logger } = window.EdgeTabsPlus;
 
         switch (message.action) {
             case 'updateTheme':
                 try {
+                    logger.addLog('Received theme update message:', message);
+                    
                     // Apply theme with transition
                     document.documentElement.classList.toggle('dark-theme', message.isDark);
                     document.body.classList.toggle('dark-theme', message.isDark);
+                    
+                    // Store theme state locally for quick access
+                    window.EdgeTabsPlus.currentTheme = message.isDark ? 'dark' : 'light';
                     
                     // Notify user of theme change via logger
                     logger.addLog(`Theme updated to ${message.isDark ? 'dark' : 'light'} mode`);
@@ -75,10 +83,18 @@
                     setTimeout(() => {
                         document.documentElement.classList.remove('theme-transitioning');
                     }, 300); // Match transition duration in styles.js
+                    
+                    // Send confirmation back
+                    if (sendResponse) {
+                        sendResponse({ success: true });
+                    }
                 } catch (error) {
                     logger.error('Failed to update theme:', error);
+                    if (sendResponse) {
+                        sendResponse({ success: false, error: error.message });
+                    }
                 }
-                break;
+                return true; // Keep the message channel open
 
             case 'toggleUpdate':
                 try {

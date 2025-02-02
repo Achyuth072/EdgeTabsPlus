@@ -38,14 +38,10 @@ document.addEventListener('DOMContentLoaded', () => {
         themeToggle.appendChild(ripple);
         setTimeout(() => ripple.remove(), 1000);
         
-        // Update tab strip theme
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            if (tabs[0]) {
-                chrome.tabs.sendMessage(tabs[0].id, {
-                    action: 'updateTheme',
-                    isDark: isDark
-                });
-            }
+        // Broadcast theme change to all tabs via background script
+        chrome.runtime.sendMessage({
+            action: 'syncTheme',
+            isDark: isDark
         });
         console.log('Theme updated:', isDark ? 'dark' : 'light');
     }
