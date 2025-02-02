@@ -16,6 +16,14 @@
             EdgeTabsPlus.styles.init();
             EdgeTabsPlus.logger.init();
             
+            // Initialize theme state from storage
+            chrome.storage.sync.get('isDarkMode', (result) => {
+                const isDark = result.isDarkMode !== undefined ? result.isDarkMode : true;
+                document.documentElement.classList.toggle('dark-theme', isDark);
+                document.body.classList.toggle('dark-theme', isDark);
+                EdgeTabsPlus.logger.addLog(`Initialized theme: ${isDark ? 'dark' : 'light'} mode`);
+            });
+            
             // Log initialization started
             EdgeTabsPlus.logger.addLog('Starting EdgeTabs+ initialization...');
             EdgeTabsPlus.logger.addLog(`Using scroll threshold: ${EdgeTabsPlus.config.scroll.threshold}px`);
