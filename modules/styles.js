@@ -207,25 +207,65 @@
         injectAdditionalStyles() {
             const style = document.createElement('style');
             style.textContent = `
+                /* Define theme variables */
+                :root {
+                    --strip-bg: #f0f2f4;
+                    --strip-border: rgba(0, 0, 0, 0.1);
+                    --strip-shadow: rgba(0, 0, 0, 0.05);
+                    --tab-bg: linear-gradient(to bottom, #ffffff, #f8f9fa);
+                    --tab-border: rgba(0, 0, 0, 0.1);
+                    --tab-shadow: rgba(0, 0, 0, 0.05);
+                    --tab-active-bg: #ffffff;
+                    --tab-active-border: rgba(0, 0, 0, 0.2);
+                    --tab-active-shadow: rgba(0, 0, 0, 0.1);
+                    --tab-active-indicator: #0078D4;
+                    --tab-text: #000000;
+                    --tab-hover-bg: rgba(0, 0, 0, 0.05);
+                    transition: all 0.3s ease;
+                }
+
+                /* Dark theme variables */
+                .dark-theme {
+                    --strip-bg: #202124;
+                    --strip-border: rgba(255, 255, 255, 0.1);
+                    --strip-shadow: rgba(0, 0, 0, 0.2);
+                    --tab-bg: linear-gradient(to bottom, #292a2d, #202124);
+                    --tab-border: rgba(255, 255, 255, 0.1);
+                    --tab-shadow: rgba(0, 0, 0, 0.2);
+                    --tab-active-bg: #3c4043;
+                    --tab-active-border: rgba(255, 255, 255, 0.2);
+                    --tab-active-shadow: rgba(0, 0, 0, 0.3);
+                    --tab-active-indicator: #8ab4f8;
+                    --tab-text: #e8eaed;
+                    --tab-hover-bg: rgba(255, 255, 255, 0.05);
+                }
+
+                /* Apply theme variables */
                 #edgetabs-plus-strip {
-                    background-color: #f0f2f4 !important;
-                    border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
-                    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05) !important;
+                    background-color: var(--strip-bg) !important;
+                    border-top: 1px solid var(--strip-border) !important;
+                    box-shadow: 0 -2px 4px var(--strip-shadow) !important;
                     padding: 4px 8px !important;
+                    transition: all 0.3s ease !important;
                 }
 
                 #edgetabs-plus-strip .tab-item {
-                    background: linear-gradient(to bottom, #ffffff, #f8f9fa) !important;
-                    border: 1px solid rgba(0, 0, 0, 0.1) !important;
-                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+                    background: var(--tab-bg) !important;
+                    border: 1px solid var(--tab-border) !important;
+                    box-shadow: 0 1px 2px var(--tab-shadow) !important;
                     margin: 2px !important;
-                    transition: all 0.2s ease-out !important;
+                    transition: all 0.3s ease !important;
+                    color: var(--tab-text) !important;
+                }
+
+                #edgetabs-plus-strip .tab-item:hover {
+                    background: var(--tab-hover-bg) !important;
                 }
 
                 #edgetabs-plus-strip .tab-item.active {
-                    background: #ffffff !important;
-                    border: 1px solid rgba(0, 0, 0, 0.2) !important;
-                    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+                    background: var(--tab-active-bg) !important;
+                    border: 1px solid var(--tab-active-border) !important;
+                    box-shadow: 0 2px 6px var(--tab-active-shadow) !important;
                     position: relative !important;
                     z-index: 2 !important;
                     transform: translateY(-1px) scale(1.02) !important;
@@ -238,12 +278,12 @@
                     left: -1px !important;
                     right: -1px !important;
                     height: 2px !important;
-                    background-color: #0078D4 !important;
+                    background-color: var(--tab-active-indicator) !important;
                     border-radius: 2px 2px 0 0 !important;
                 }
 
                 #edgetabs-plus-strip .tab-item.active span:not(.close-tab) {
-                    color: #000000 !important;
+                    color: var(--tab-text) !important;
                     font-weight: 500 !important;
                 }
             `;

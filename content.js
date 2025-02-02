@@ -55,8 +55,18 @@
         switch (message.action) {
             case 'updateTheme':
                 try {
+                    // Apply theme with transition
+                    document.documentElement.classList.toggle('dark-theme', message.isDark);
                     document.body.classList.toggle('dark-theme', message.isDark);
-                    logger.addLog(`Theme updated to ${message.isDark ? 'dark' : 'light'}`);
+                    
+                    // Notify user of theme change via logger
+                    logger.addLog(`Theme updated to ${message.isDark ? 'dark' : 'light'} mode`);
+                    
+                    // Apply smooth transition class
+                    document.documentElement.classList.add('theme-transitioning');
+                    setTimeout(() => {
+                        document.documentElement.classList.remove('theme-transitioning');
+                    }, 300); // Match transition duration in styles.js
                 } catch (error) {
                     logger.error('Failed to update theme:', error);
                 }
