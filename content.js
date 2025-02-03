@@ -16,12 +16,34 @@
             EdgeTabsPlus.styles.init();
             EdgeTabsPlus.logger.init();
             
-            // Initialize theme state from storage
-            chrome.storage.sync.get('isDarkMode', (result) => {
+            // Initialize states from storage
+            chrome.storage.sync.get(['isDarkMode', 'showTabStrip', 'autoHide'], (result) => {
+                // Theme initialization
                 const isDark = result.isDarkMode !== undefined ? result.isDarkMode : true;
                 document.documentElement.classList.toggle('dark-theme', isDark);
                 document.body.classList.toggle('dark-theme', isDark);
                 EdgeTabsPlus.logger.addLog(`Initialized theme: ${isDark ? 'dark' : 'light'} mode`);
+                
+                // Tab strip visibility initialization
+                const tabStrip = document.getElementById('edgetabs-plus-strip');
+                if (tabStrip) {
+                    const showStrip = result.showTabStrip !== undefined ? result.showTabStrip : true;
+                    if (showStrip) {
+                        tabStrip.style.display = 'flex';
+                        tabStrip.classList.add('visible');
+                    } else {
+                        tabStrip.style.display = 'none';
+                    }
+                    EdgeTabsPlus.logger.addLog(`Initialized tab strip visibility: ${showStrip}`);
+                }
+                
+                // Auto-hide initialization
+                const autoHide = result.autoHide !== undefined ? result.autoHide : true;
+                if (tabStrip) {
+                    tabStrip.classList.toggle('auto-hide-enabled', autoHide);
+                }
+                EdgeTabsPlus.scrollHandler.setAutoHide(autoHide);
+                EdgeTabsPlus.logger.addLog(`Initialized auto-hide: ${autoHide}`);
             });
             
             // Log initialization started
@@ -98,19 +120,59 @@
 
             case 'toggleUpdate':
                 try {
-                    if (message.key === 'showTabStrip') {
-                        const tabStrip = document.getElementById('tab-strip');
-                        if (tabStrip) {
-                            tabStrip.style.display = message.value ? 'flex' : 'none';
-                            logger.addLog(`Tab strip visibility set to: ${message.value}`);
-                        }
-                    } else if (message.key === 'autoHide') {
-                        EdgeTabsPlus.scrollHandler.setAutoHide(message.value);
-                        logger.addLog(`Auto-hide set to: ${message.value}`);
+                    switch (message.key) {
+                        case 'showTabStrip':
+                            const tabStrip = document.getElementById('edgetabs-plus-strip');
+                            if (tabStrip) {
+                                // Add transition class before changing display
+                                tabStrip.classList.add('transitioning');
+                                
+                                if (message.value) {
+                                    // Show strip
+                                    tabStrip.style.display = 'flex';
+                                    // Force reflow
+                                    void tabStrip.offsetHeight;
+                                    tabStrip.classList.add('visible');
+                                    setTimeout(() => {
+                                        tabStrip.classList.remove('transitioning');
+                                    }, 300);
+                                } else {
+                                    // Hide strip
+                                    tabStrip.classList.remove('visible');
+                                    setTimeout(() => {
+                                        tabStrip.style.display = 'none';
+                                        tabStrip.classList.remove('transitioning');
+                                    }, 300);
+                                }
+                                
+                                logger.addLog(`Tab strip visibility set to: ${message.value}`);
+                            }
+                            break;
+                            
+                        case 'autoHide':
+                            const strip = document.getElementById('edgetabs-plus-strip');
+                            if (strip) {
+                                strip.classList.toggle('auto-hide-enabled', message.value);
+                            }
+                            EdgeTabsPlus.scrollHandler.setAutoHide(message.value);
+                            logger.addLog(`Auto-hide set to: ${message.value}`);
+                            break;
+                            
+                        default:
+                            logger.addLog(`Unknown toggle key: ${message.key}`);
+                    }
+                    
+                    // Send confirmation back
+                    if (sendResponse) {
+                        sendResponse({ success: true });
                     }
                 } catch (error) {
                     logger.error('Failed to handle toggle update:', error);
+                    if (sendResponse) {
+                        sendResponse({ success: false, error: error.message });
+                    }
                 }
+                return true; // Keep message channel open
                 break;
         }
     });

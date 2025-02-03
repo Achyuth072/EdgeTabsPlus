@@ -4,10 +4,29 @@
     EdgeTabsPlus.scrollHandler = {
         lastScrollY: 0,
         isScrolling: false,
+        isAutoHideEnabled: true, // Default to true as per requirement
 
         init() {
+            // Get initial auto-hide state from storage
+            chrome.storage.sync.get('autoHide', (result) => {
+                this.isAutoHideEnabled = result.autoHide !== undefined ? result.autoHide : true;
+                EdgeTabsPlus.logger.addLog(`Scroll handler initialized with auto-hide: ${this.isAutoHideEnabled}`);
+            });
             this.setupScrollListener();
             return this;
+        },
+
+        setAutoHide(enabled) {
+            this.isAutoHideEnabled = enabled;
+            const strip = document.getElementById('edgetabs-plus-strip');
+            if (strip) {
+                if (!enabled) {
+                    // Reset position when disabled
+                    strip.classList.remove('hidden');
+                    strip.style.transform = 'translate3d(0,0,0)';
+                }
+            }
+            EdgeTabsPlus.logger.addLog(`Auto-hide ${enabled ? 'enabled' : 'disabled'}`);
         },
 
         setupScrollListener() {
@@ -15,16 +34,24 @@
         },
 
         handleScroll() {
-            if (!this.isScrolling) {
+            if (!this.isAutoHideEnabled || !this.isScrolling) {
                 requestAnimationFrame(() => {
                     const currentScrollY = window.scrollY;
                     const scrollDelta = currentScrollY - this.lastScrollY;
+                    const strip = document.getElementById('edgetabs-plus-strip');
 
-                    if (Math.abs(scrollDelta) > EdgeTabsPlus.config.scroll.threshold) {
-                        requestAnimationFrame(() => {
-                            EdgeTabsPlus.uiComponents.strip.style.transform = scrollDelta > 0 ? 
-                                'translate3d(0,100%,0)' : 'translate3d(0,0,0)';
-                        });
+                    if (strip && Math.abs(scrollDelta) > EdgeTabsPlus.config.scroll.threshold) {
+                        if (this.isAutoHideEnabled) {
+                            requestAnimationFrame(() => {
+                                if (scrollDelta > 0) {
+                                    // Scrolling down - hide
+                                    strip.classList.add('hidden');
+                                } else {
+                                    // Scrolling up - show
+                                    strip.classList.remove('hidden');
+                                }
+                            });
+                        }
                         this.lastScrollY = currentScrollY;
                     }
                 });

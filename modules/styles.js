@@ -28,6 +28,38 @@
                 #edgetabs-plus-strip {
                     min-height: 40px !important;
                     padding: 4px 8px !important;
+                    transition: opacity 0.3s ease, transform 0.3s ease !important;
+                    opacity: 1 !important;
+                    transform: translateY(0) !important;
+                }
+
+                #edgetabs-plus-strip.transitioning {
+                    transition: opacity 0.3s ease, transform 0.3s ease, display 0s linear 0.3s !important;
+                }
+
+                #edgetabs-plus-strip:not(.visible) {
+                    opacity: 0 !important;
+                    transform: translateY(100%) !important;
+                }
+
+                /* Auto-hide behavior */
+                #edgetabs-plus-strip {
+                    transition: opacity 0.3s ease, transform 0.3s ease !important;
+                    transform: translateY(0) !important;
+                    opacity: 1 !important;
+                    will-change: transform, opacity !important;
+                }
+
+                #edgetabs-plus-strip.hidden {
+                    opacity: 0 !important;
+                    transform: translateY(100%) !important;
+                    pointer-events: none !important;
+                }
+
+                /* Disable transitions when auto-hide is disabled */
+                #edgetabs-plus-strip:not(.auto-hide-enabled) {
+                    transform: translateY(0) !important;
+                    opacity: 1 !important;
                 }
                 
                 #edgetabs-plus-strip ul {

@@ -48,23 +48,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Toggle State Management
     function updateToggle(element, state) {
-        const setting = element.dataset.setting;
-        element.setAttribute('aria-checked', state);
-        
-        // Update storage and notify content script
-        chrome.storage.sync.set({ [setting]: state === 'true' }, () => {
-            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-                if (tabs[0]) {
-                    chrome.tabs.sendMessage(tabs[0].id, {
-                        action: 'toggleUpdate',
-                        key: setting,
-                        value: state === 'true'
+            const setting = element.dataset.setting;
+            element.setAttribute('aria-checked', state);
+            const isEnabled = state === 'true';
+            
+            // Update storage and notify all tabs
+            chrome.storage.sync.set({ [setting]: isEnabled }, () => {
+                console.log(`Toggle ${setting} updated:`, isEnabled);
+                
+                // Broadcast to all tabs
+                chrome.tabs.query({}, (tabs) => {
+                    tabs.forEach(tab => {
+                        chrome.tabs.sendMessage(tab.id, {
+                            action: 'toggleUpdate',
+                            key: setting,
+                            value: isEnabled
+                        }).catch(err => {
+                            // Ignore disconnected port errors
+                            if (!err.message.includes('receiving end does not exist')) {
+                                console.error(`Failed to update toggle in tab ${tab.id}:`, err);
+                            }
+                        });
                     });
-                }
+                });
             });
-            console.log(`Toggle ${setting} updated:`, state);
-        });
-    }
+        }
 
     // Initialize toggle states
     function initToggles() {
