@@ -56,21 +56,38 @@ document.addEventListener('DOMContentLoaded', () => {
             chrome.storage.sync.set({ [setting]: isEnabled }, () => {
                 console.log(`Toggle ${setting} updated:`, isEnabled);
                 
-                // Broadcast to all tabs
+                // Broadcast to all tabs with retry mechanism
                 chrome.tabs.query({}, (tabs) => {
                     tabs.forEach(tab => {
-                        chrome.tabs.sendMessage(tab.id, {
-                            action: 'toggleUpdate',
-                            key: setting,
-                            value: isEnabled
-                        }).catch(err => {
-                            // Ignore disconnected port errors
-                            if (!err.message.includes('receiving end does not exist')) {
-                                console.error(`Failed to update toggle in tab ${tab.id}:`, err);
-                            }
-                        });
+                        const notifyTab = (retries = 3) => {
+                            chrome.tabs.sendMessage(tab.id, {
+                                action: 'toggleUpdate',
+                                key: setting,
+                                value: isEnabled
+                            }).catch(err => {
+                                if (!err.message.includes('receiving end does not exist')) {
+                                    if (retries > 0) {
+                                        // Retry with exponential backoff
+                                        setTimeout(() => notifyTab(retries - 1), (4 - retries) * 200);
+                                    } else {
+                                        console.error(`Failed to update toggle in tab ${tab.id} after retries:`, err);
+                                    }
+                                }
+                            });
+                        };
+                        notifyTab();
                     });
                 });
+                
+                // Double-check persistence after a delay
+                setTimeout(() => {
+                    chrome.storage.sync.get(setting, (result) => {
+                        if (result[setting] !== isEnabled) {
+                            console.warn(`Toggle state mismatch for ${setting}, correcting...`);
+                            chrome.storage.sync.set({ [setting]: isEnabled });
+                        }
+                    });
+                }, 1000);
             });
         }
 

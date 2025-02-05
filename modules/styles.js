@@ -69,14 +69,20 @@
                     overflow-y: hidden;
                     gap: 2px;
                     scroll-snap-type: x mandatory;
-                    scroll-behavior: smooth;        
+                    scroll-behavior: smooth;
                     -webkit-overflow-scrolling: touch;
                     -ms-overflow-style: none;
                     scrollbar-width: none;
                     flex: 1;
                     margin: 0;
-                    padding: 0;
+                    padding: 0 8px;
                     display: flex;
+                    max-width: 100%;
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                    overscroll-behavior-x: contain;
+                    position: relative;
+                    width: 100%;
                 }
 
                 /* Add tab button container */

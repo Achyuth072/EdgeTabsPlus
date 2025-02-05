@@ -136,45 +136,48 @@
         },
 
         scrollToActiveTab(tabId) {
-            if (!EdgeTabsPlus.settings.retainScrollPosition) return;
-            
-            const tabsList = document.getElementById('tabs-list');
-            const activeTab = tabsList.querySelector(`[data-tab-id="${tabId}"]`);
-            
-            if (activeTab) {
-                const tabsListRect = tabsList.getBoundingClientRect();
-                const tabRect = activeTab.getBoundingClientRect();
-                const tabLeft = activeTab.offsetLeft;
-                const tabWidth = activeTab.offsetWidth;
-                const listWidth = tabsList.offsetWidth;
-                const totalWidth = tabsList.scrollWidth;
-                
-                const leftMargin = Math.max(listWidth * 0.1, tabWidth);
-                const rightMargin = Math.max(listWidth * 0.1, tabWidth);
-                
-                let scrollPosition;
-                
-                const idealCenter = tabLeft - (listWidth - tabWidth) / 2;
-                
-                if (tabLeft < leftMargin) {
-                    scrollPosition = Math.max(0, tabLeft - leftMargin);
-                } else if (tabLeft + tabWidth > totalWidth - rightMargin) {
-                    scrollPosition = Math.min(
-                        totalWidth - listWidth,
-                        tabLeft - (listWidth - tabWidth - rightMargin)
-                    );
-                } else {
-                    scrollPosition = idealCenter;
-                }
-                
-                scrollPosition = Math.max(0, Math.min(scrollPosition, totalWidth - listWidth));
-                
-                tabsList.scrollTo({
-                    left: scrollPosition,
-                    behavior: 'smooth'
-                });
-            }
-        },
+                    if (!EdgeTabsPlus.settings.retainScrollPosition) return;
+                    
+                    const tabsList = document.getElementById('tabs-list');
+                    const activeTab = tabsList.querySelector(`[data-tab-id="${tabId}"]`);
+                    
+                    if (!activeTab || !tabsList) return;
+                    
+                    // Get dimensions and positions
+                    const tabLeft = activeTab.offsetLeft;
+                    const tabWidth = activeTab.offsetWidth;
+                    const listWidth = tabsList.offsetWidth;
+                    const totalWidth = tabsList.scrollWidth;
+                    const currentScroll = tabsList.scrollLeft;
+                    
+                    // Calculate visible margins and center position
+                    const visibleWidth = Math.min(listWidth, totalWidth);
+                    const minVisibleTabs = 2;
+                    const margin = Math.min(tabWidth * minVisibleTabs, visibleWidth * 0.2);
+                    
+                    // Calculate ideal center position
+                    let targetScroll = tabLeft - (visibleWidth - tabWidth) / 2;
+                    
+                    // Adjust for edges
+                    if (targetScroll < margin) {
+                        // Near start - show start of list
+                        targetScroll = 0;
+                    } else if (targetScroll + visibleWidth > totalWidth - margin) {
+                        // Near end - show end of list
+                        targetScroll = totalWidth - visibleWidth;
+                    }
+                    
+                    // Ensure bounds
+                    targetScroll = Math.max(0, Math.min(targetScroll, totalWidth - visibleWidth));
+                    
+                    // Only scroll if needed
+                    if (Math.abs(currentScroll - targetScroll) > tabWidth * 0.1) {
+                        tabsList.scrollTo({
+                            left: targetScroll,
+                            behavior: 'smooth'
+                        });
+                    }
+                },
 
         updateMinimalTabs() {
             const tabs = document.querySelectorAll('.tab-item');
