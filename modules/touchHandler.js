@@ -41,10 +41,15 @@
             this.scrollLeft = EdgeTabsPlus.uiComponents.tabsList.scrollLeft;
             this.velocity = 0;
             
+            // Cancel any ongoing momentum and animations
             cancelAnimationFrame(this.momentumRAF);
-            
-            // Prepare for smooth scrolling
             EdgeTabsPlus.uiComponents.tabsList.style.scrollBehavior = 'auto';
+            
+            // Clear any existing transitions to prevent ghosting
+            EdgeTabsPlus.uiComponents.tabsList.style.transition = 'none';
+            requestAnimationFrame(() => {
+                EdgeTabsPlus.uiComponents.tabsList.style.transition = '';
+            });
         },
 
         onTouchMove(e) {

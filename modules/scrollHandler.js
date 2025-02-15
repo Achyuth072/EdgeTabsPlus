@@ -59,17 +59,18 @@
             this.isScrolling = false;
         },
 
-        updateScrollSnapPoints() {
+        updateScrollSnap() {
             const tabsList = document.getElementById('tabs-list');
+            if (!tabsList) return;
+            
+            // Modern scroll snap properties
+            tabsList.style.scrollSnapType = 'x mandatory';
+            
+            // Apply scroll snap align to all tabs
             const tabs = tabsList.getElementsByClassName('tab-item');
-            let snapPoints = '';
-            
-            Array.from(tabs).forEach((tab, index) => {
-                const position = (tab.offsetWidth * index);
-                snapPoints += `${position}px `;
+            Array.from(tabs).forEach(tab => {
+                tab.style.scrollSnapAlign = 'center';
             });
-            
-            tabsList.style.scrollSnapPoints = `x mandatory ${snapPoints}`;
         }
     };
 })();

@@ -136,48 +136,46 @@
         },
 
         scrollToActiveTab(tabId) {
-                    if (!EdgeTabsPlus.settings.retainScrollPosition) return;
-                    
-                    const tabsList = document.getElementById('tabs-list');
-                    const activeTab = tabsList.querySelector(`[data-tab-id="${tabId}"]`);
-                    
-                    if (!activeTab || !tabsList) return;
-                    
-                    // Get dimensions and positions
-                    const tabLeft = activeTab.offsetLeft;
-                    const tabWidth = activeTab.offsetWidth;
-                    const listWidth = tabsList.offsetWidth;
-                    const totalWidth = tabsList.scrollWidth;
-                    const currentScroll = tabsList.scrollLeft;
-                    
-                    // Calculate visible margins and center position
-                    const visibleWidth = Math.min(listWidth, totalWidth);
-                    const minVisibleTabs = 2;
-                    const margin = Math.min(tabWidth * minVisibleTabs, visibleWidth * 0.2);
-                    
-                    // Calculate ideal center position
-                    let targetScroll = tabLeft - (visibleWidth - tabWidth) / 2;
-                    
-                    // Adjust for edges
-                    if (targetScroll < margin) {
-                        // Near start - show start of list
-                        targetScroll = 0;
-                    } else if (targetScroll + visibleWidth > totalWidth - margin) {
-                        // Near end - show end of list
-                        targetScroll = totalWidth - visibleWidth;
-                    }
-                    
-                    // Ensure bounds
-                    targetScroll = Math.max(0, Math.min(targetScroll, totalWidth - visibleWidth));
-                    
-                    // Only scroll if needed
-                    if (Math.abs(currentScroll - targetScroll) > tabWidth * 0.1) {
-                        tabsList.scrollTo({
-                            left: targetScroll,
-                            behavior: 'smooth'
-                        });
-                    }
-                },
+            if (!EdgeTabsPlus.settings.retainScrollPosition) return;
+            
+            const tabsList = document.getElementById('tabs-list');
+            const activeTab = tabsList.querySelector(`[data-tab-id="${tabId}"]`);
+            
+            if (!activeTab || !tabsList) return;
+            
+            // Get dimensions
+            const tabLeft = activeTab.offsetLeft;
+            const tabWidth = activeTab.offsetWidth;
+            const listWidth = tabsList.offsetWidth;
+            const totalWidth = tabsList.scrollWidth;
+            const currentScroll = tabsList.scrollLeft;
+            
+            // Determine if tab is fully visible
+            const tabStart = tabLeft;
+            const tabEnd = tabLeft + tabWidth;
+            const viewportStart = currentScroll;
+            const viewportEnd = currentScroll + listWidth;
+            const isTabFullyVisible = tabStart >= viewportStart && tabEnd <= viewportEnd;
+            
+            // If tab is already fully visible, don't scroll
+            if (isTabFullyVisible) return;
+            
+            // Calculate optimal scroll position to center the tab
+            let targetScroll = tabLeft - (listWidth - tabWidth) / 2;
+            
+            // Adjust for boundaries
+            targetScroll = Math.max(0, Math.min(targetScroll, totalWidth - listWidth));
+            
+            // Cancel any ongoing smooth scrolls first
+            tabsList.style.scrollBehavior = 'auto';
+            requestAnimationFrame(() => {
+                tabsList.style.scrollBehavior = 'smooth';
+                tabsList.scrollTo({
+                    left: targetScroll,
+                    behavior: 'smooth'
+                });
+            });
+        },
 
         updateMinimalTabs() {
             const tabs = document.querySelectorAll('.tab-item');
