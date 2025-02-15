@@ -78,11 +78,13 @@
                     padding: 0 8px;
                     display: flex;
                     max-width: 100%;
-                    scrollbar-width: none;
-                    -ms-overflow-style: none;
-                    overscroll-behavior-x: contain;
                     position: relative;
                     width: 100%;
+                    will-change: transform;
+                    transform: translate3d(0,0,0);
+                    backface-visibility: hidden;
+                    perspective: 1000;
+                    overscroll-behavior-x: contain;
                 }
 
                 /* Add tab button container */
@@ -210,6 +212,14 @@
                 .tab-item.minimal {
                     width: 90px !important;
                     flex: 0 0 90px !important;
+                }
+                
+                .tab-item.minimal div:not(.close-tab) {
+                    max-width: 24px !important; /* Only show favicon */
+                }
+                
+                .tab-item.minimal span:not(.close-tab) {
+                    display: none !important; /* Hide text completely */
                 }
             `;
             document.head.appendChild(style);

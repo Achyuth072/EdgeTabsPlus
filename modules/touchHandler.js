@@ -11,6 +11,10 @@
         momentumRAF: null,
 
         init() {
+            // Initialize timing properties
+            this.frameTime = 1000 / 120; // Base timing for up to 120Hz displays
+            this.lastFrameTime = 0;
+            this.scrollRAF = null;
             this.setupTouchScroll();
             return this;
         },
@@ -18,12 +22,22 @@
         setupTouchScroll() {
             const tabsList = EdgeTabsPlus.uiComponents.tabsList;
             
-            // Use transform for hardware acceleration
+            // Enhanced hardware acceleration and smooth scrolling
             tabsList.style.transform = 'translate3d(0,0,0)';
-            tabsList.style.willChange = 'scroll-position';
+            tabsList.style.backfaceVisibility = 'hidden';
+            tabsList.style.perspective = '1000';
+            tabsList.style.willChange = 'transform';  // More specific than scroll-position
             tabsList.style.overscrollBehavior = 'contain';
+            tabsList.style.scrollBehavior = 'smooth';
+            
+            // Ensure proper rendering on high refresh rate displays
+            tabsList.style.imageRendering = 'auto';
+            tabsList.style.textRendering = 'optimizeLegibility';
             
             this.addTouchListeners(tabsList);
+            
+            // Add smooth scrolling class for CSS control
+            tabsList.classList.add('smooth-scroll');
         },
 
         addTouchListeners(tabsList) {
@@ -52,40 +66,52 @@
             });
         },
 
-        onTouchMove(e) {
-                    if (!this.isDragging) return;
-                    
-                    const tabsList = EdgeTabsPlus.uiComponents.tabsList;
-                    const x = e.touches[0].pageX;
-                    const deltaX = x - this.lastX;
-                    const currentTime = Date.now();
-                    const deltaTime = currentTime - this.lastTime;
-                    
-                    // Calculate velocity (pixels per millisecond)
-                    if (deltaTime > 0) {
-                        this.velocity = (deltaX / deltaTime); // Reduced sensitivity for better control
-                    }
-                    
-                    // Calculate new scroll position
-                    const newScrollLeft = this.scrollLeft - (x - this.startX);
-                    
-                    // Check boundaries
-                    const maxScroll = tabsList.scrollWidth - tabsList.clientWidth;
-                    const boundedScrollLeft = Math.max(0, Math.min(newScrollLeft, maxScroll));
-                    
-                    // Update scroll position with hardware acceleration and boundary checks
-                    requestAnimationFrame(() => {
-                        tabsList.scrollLeft = boundedScrollLeft;
-                        
-                        // Reset velocity if hitting boundaries to prevent bouncing
-                        if (boundedScrollLeft === 0 || boundedScrollLeft === maxScroll) {
-                            this.velocity = 0;
-                        }
-                    });
-                    
-                    this.lastX = x;
-                    this.lastTime = currentTime;
-                },
+onTouchMove(e) {
+if (!this.isDragging) return;
+
+const currentTime = performance.now();
+const deltaTime = currentTime - this.lastFrameTime;
+
+// Throttle updates to match display refresh rate
+if (deltaTime < this.frameTime) return;
+
+const tabsList = EdgeTabsPlus.uiComponents.tabsList;
+if (!tabsList) return;
+
+// Cancel any ongoing animations
+if (this.scrollRAF) {
+    cancelAnimationFrame(this.scrollRAF);
+    this.scrollRAF = null;
+}
+
+const x = e.touches[0].pageX;
+const deltaX = x - this.lastX;
+
+// Calculate new scroll position
+const newScrollLeft = this.scrollLeft - (x - this.startX);
+const maxScroll = tabsList.scrollWidth - tabsList.clientWidth;
+const boundedScrollLeft = Math.max(0, Math.min(newScrollLeft, maxScroll));
+
+// Calculate velocity with high refresh rate compensation
+if (deltaTime > 0) {
+    const instantVelocity = deltaX / deltaTime;
+    const velocityScale = Math.min(1, 60 / (1000 / deltaTime)); // Scale based on actual refresh rate
+    this.velocity = instantVelocity * velocityScale;
+}
+
+// Schedule update on next frame
+this.scrollRAF = requestAnimationFrame(() => {
+    tabsList.style.transform = `translateX(0)`; // Force GPU composition
+    tabsList.scrollLeft = boundedScrollLeft;
+    
+    if (boundedScrollLeft === 0 || boundedScrollLeft === maxScroll) {
+        this.velocity = 0;
+    }
+});
+
+this.lastX = x;
+this.lastFrameTime = currentTime;
+},
 
         onTouchEnd() {
                     if (!this.isDragging) return;
