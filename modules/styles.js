@@ -68,8 +68,8 @@
                     overflow-x: auto;
                     overflow-y: hidden;
                     gap: 2px;
-                    scroll-snap-type: x mandatory;
-                    scroll-behavior: smooth;
+                    scroll-snap-type: none;  // Disable snap during scroll
+                    scroll-behavior: auto;   // Let JS handle smooth scrolling
                     -webkit-overflow-scrolling: touch;
                     -ms-overflow-style: none;
                     scrollbar-width: none;
