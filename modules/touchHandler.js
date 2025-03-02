@@ -91,16 +91,17 @@ onTouchMove(e) {
     // Pure velocity calculation without artificial boosting
     const instantSpeed = Math.abs(deltaX / deltaTime);
     
-    // Simple threshold for distinguishing flicks
-    const isFlickGesture = instantSpeed > 0.8; // Lower threshold for better response
+    // Ultra-responsive flick detection
+    const isFlickGesture = instantSpeed > 0.3; // Much lower threshold to catch even gentle flicks
     
     if (isFlickGesture) {
-        // Cancel any ongoing animations
         cancelAnimationFrame(this.scrollRAF);
         cancelAnimationFrame(this.momentumRAF);
         
-        // Use raw velocity for more natural feel
-        this.velocity = deltaX / deltaTime;
+        // Calculate velocity with speed scaling
+        const baseVelocity = deltaX / deltaTime;
+        const speedScale = Math.min(4.0, Math.max(2.0, Math.abs(baseVelocity))); // Dynamic scaling
+        this.velocity = baseVelocity * speedScale;
         
         // Immediate position update for responsiveness
         const newScrollLeft = this.scrollLeft - (x - this.startX);
@@ -147,26 +148,28 @@ onTouchMove(e) {
             
             // Enhanced flick scrolling
             if (isFlick) {
-                // Boost velocity for flicks to feel more responsive
-                this.velocity *= 1.5; // Amplify flick speed
+                // Much higher boost for flicks
+                this.velocity *= 3.0; // Triple the initial velocity
                 
                 tabsList.classList.add('fast-scroll');
                 tabsList.style.scrollBehavior = 'auto';
                 
-                let lastTimestamp = performance.now();
-                const flickMomentum = (timestamp) => {
-                    const delta = timestamp - lastTimestamp;
-                    lastTimestamp = timestamp;
-                    
-                    // Scale velocity based on frame timing
-                    const scaledVelocity = this.velocity * (delta / 16);
-                    const newScrollLeft = tabsList.scrollLeft - scaledVelocity;
+                const flickMomentum = () => {
+                    // Direct velocity application without frame timing for faster response
+                    const newScrollLeft = tabsList.scrollLeft - (this.velocity * 20); // Increased multiplier
                     const boundedScrollLeft = Math.max(0, Math.min(newScrollLeft, maxScroll));
                     
                     tabsList.scrollLeft = boundedScrollLeft;
                     
-                    // Simple linear deceleration
-                    this.velocity *= 0.95;
+                    // Variable deceleration based on speed
+                    const currentSpeed = Math.abs(this.velocity);
+                    if (currentSpeed > 3) {
+                        this.velocity *= 0.98; // Very slow deceleration at high speeds
+                    } else if (currentSpeed > 1) {
+                        this.velocity *= 0.95; // Medium deceleration
+                    } else {
+                        this.velocity *= 0.9; // Faster deceleration at low speeds
+                    }
                     
                     if (Math.abs(this.velocity) > 0.1 &&
                         boundedScrollLeft !== 0 &&

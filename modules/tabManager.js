@@ -157,21 +157,35 @@
             const viewportEnd = currentScroll + listWidth;
             const isTabFullyVisible = tabStart >= viewportStart && tabEnd <= viewportEnd;
             
-            // If tab is already fully visible, don't scroll
-            if (isTabFullyVisible) return;
+            // If tab is already fully visible and not at edges, don't scroll
+            if (isTabFullyVisible && tabStart > 0 && tabEnd < totalWidth) return;
             
-            // Calculate optimal scroll position to center the tab
-            let targetScroll = tabLeft - (listWidth - tabWidth) / 2;
+            // Special handling for first and last tabs
+            if (tabLeft === 0) {
+                // First tab - always scroll to the start
+                targetScroll = 0;
+            } else if (tabLeft + tabWidth >= totalWidth) {
+                // Last tab - always scroll to the end
+                targetScroll = totalWidth - listWidth;
+            } else {
+                // Calculate optimal scroll position to center the tab
+                targetScroll = tabLeft - (listWidth - tabWidth) / 2;
+                // Adjust for boundaries
+                targetScroll = Math.max(0, Math.min(targetScroll, totalWidth - listWidth));
+            }
             
-            // Adjust for boundaries
-            targetScroll = Math.max(0, Math.min(targetScroll, totalWidth - listWidth));
+            // Ensure we're not scrolling beyond bounds
+            const sanitizedTargetScroll = Math.max(0, Math.min(targetScroll, totalWidth - listWidth));
             
             // Cancel any ongoing smooth scrolls first
             tabsList.style.scrollBehavior = 'auto';
+            tabsList.scrollLeft = currentScroll; // Ensure we're starting from the current position
+            
             requestAnimationFrame(() => {
+                // Reset scroll behavior and perform the scroll
                 tabsList.style.scrollBehavior = 'smooth';
                 tabsList.scrollTo({
-                    left: targetScroll,
+                    left: sanitizedTargetScroll,
                     behavior: 'smooth'
                 });
             });
