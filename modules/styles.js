@@ -3,11 +3,45 @@
 
     EdgeTabsPlus.styles = {
         init() {
+            // Critical: Insert theme protection style first, but make it less aggressive
+            this.injectThemeProtection();
             this.injectBaseStyles();
             this.injectTabWidthStyles();
             this.injectTabStateStyles();
             this.injectAdditionalStyles();
+            this.injectColorSchemeControl();
             return this;
+        },
+
+        // New method to protect against browser theme interference (less aggressive)
+        injectThemeProtection() {
+            const style = document.createElement('style');
+            style.id = 'edgetabs-theme-protection';
+            // Give it the highest priority
+            style.setAttribute('data-priority', 'critical');
+            style.textContent = `
+                /* Forcefully prevent browser dark mode from affecting our theming */
+                @media (prefers-color-scheme: dark) {
+                    #edgetabs-plus-strip, #edgetabs-plus-strip * {
+                        color-scheme: normal !important;
+                    }
+                }
+                
+                /* Essential override to prevent browser from imposing its theme */
+                #edgetabs-plus-strip, .tab-item, .menu-container {
+                    forced-colors: none !important;
+                    forced-color-adjust: none !important;
+                    -webkit-forced-color-adjust: none !important;
+                    -ms-high-contrast-adjust: none !important;
+                }
+            `;
+            // Insert at the beginning of the document to ensure it takes precedence
+            const head = document.head || document.documentElement;
+            if (head.firstChild) {
+                head.insertBefore(style, head.firstChild);
+            } else {
+                head.appendChild(style);
+            }
         },
 
         injectBaseStyles() {
@@ -31,6 +65,8 @@
                     transition: opacity 0.3s ease, transform 0.3s ease !important;
                     opacity: 1 !important;
                     transform: translateY(0) !important;
+                    z-index: 9999999 !important;
+                    display: flex !important;
                 }
 
                 #edgetabs-plus-strip.transitioning {
@@ -269,11 +305,18 @@
                     --tab-active-indicator: #0078D4;
                     --tab-text: #000000;
                     --tab-hover-bg: rgba(0, 0, 0, 0.05);
+                    --add-btn-bg: #f8f9fa;
+                    --add-btn-border: #ddd;
+                    --add-btn-color: #666;
+                    --add-btn-hover-bg: #fff;
+                    --add-btn-hover-color: #000;
                     transition: all 0.3s ease;
                 }
 
-                /* Dark theme variables */
-                .dark-theme {
+                /* Dark theme variables - make more specific for better override */
+                html.dark-theme:not(.light-theme), 
+                body.dark-theme:not(.light-theme),
+                .dark-theme:root {
                     --strip-bg: #202124;
                     --strip-border: rgba(255, 255, 255, 0.1);
                     --strip-shadow: rgba(0, 0, 0, 0.2);
@@ -286,9 +329,14 @@
                     --tab-active-indicator: #8ab4f8;
                     --tab-text: #e8eaed;
                     --tab-hover-bg: rgba(255, 255, 255, 0.05);
+                    --add-btn-bg: #292a2d;
+                    --add-btn-border: #5f6368;
+                    --add-btn-color: #e8eaed;
+                    --add-btn-hover-bg: #3c4043;
+                    --add-btn-hover-color: #ffffff;
                 }
 
-                /* Apply theme variables */
+                /* Apply theme variables to tab strip */
                 #edgetabs-plus-strip {
                     background-color: var(--strip-bg) !important;
                     border-top: 1px solid var(--strip-border) !important;
@@ -297,13 +345,30 @@
                     transition: all 0.3s ease !important;
                 }
 
-                #edgetabs-plus-strip .tab-item {
+                /* Apply theme to tab items with increased specificity */
+                #edgetabs-plus-strip .tab-item,
+                html.dark-theme #edgetabs-plus-strip .tab-item,
+                html.light-theme #edgetabs-plus-strip .tab-item {
                     background: var(--tab-bg) !important;
                     border: 1px solid var(--tab-border) !important;
                     box-shadow: 0 1px 2px var(--tab-shadow) !important;
                     margin: 2px !important;
                     transition: all 0.3s ease !important;
                     color: var(--tab-text) !important;
+                }
+
+                /* Apply theme to tab button with increased specificity */
+                #add-tab,
+                html.dark-theme #add-tab,
+                html.light-theme #add-tab {
+                    background: var(--add-btn-bg) !important;
+                    border-color: var(--add-btn-border) !important;
+                    color: var(--add-btn-color) !important;
+                }
+
+                #add-tab:hover {
+                    background: var(--add-btn-hover-bg) !important;
+                    color: var(--add-btn-hover-color) !important;
                 }
 
                 #edgetabs-plus-strip .tab-item:hover {
@@ -333,6 +398,64 @@
                 #edgetabs-plus-strip .tab-item.active span:not(.close-tab) {
                     color: var(--tab-text) !important;
                     font-weight: 500 !important;
+                }
+
+                /* Add tab container divider */
+                .add-tab-container {
+                    border-left-color: var(--tab-border) !important;
+                }
+                
+                /* Close button styling */
+                .close-tab {
+                    color: var(--tab-text) !important;
+                    opacity: 0.7;
+                }
+                
+                .close-tab:hover {
+                    opacity: 1;
+                }
+            `;
+            document.head.appendChild(style);
+        },
+        
+        injectColorSchemeControl() {
+            const style = document.createElement('style');
+            style.id = 'edgetabs-color-scheme-control';
+            style.textContent = `
+                /* Direct selectors for tab strip elements with !important */
+                #edgetabs-plus-strip {
+                    background-color: var(--strip-bg) !important;
+                    color: var(--tab-text) !important;
+                }
+                
+                .tab-item {
+                    background: var(--tab-bg) !important;
+                    color: var(--tab-text) !important;
+                    border-color: var(--tab-border) !important;
+                }
+                
+                /* Prevent theme transitioning issues */
+                .theme-transitioning {
+                    transition: none !important;
+                }
+                
+                .theme-transitioning * {
+                    transition: none !important;
+                }
+                
+                /* Make sure any tab within light or dark theme is properly colored */
+                html.dark-theme .tab-item,
+                body.dark-theme .tab-item {
+                    --tab-bg: linear-gradient(to bottom, #292a2d, #202124);
+                    --tab-text: #e8eaed;
+                    background: var(--tab-bg) !important;
+                }
+                
+                html.light-theme .tab-item,
+                body.light-theme .tab-item {
+                    --tab-bg: linear-gradient(to bottom, #ffffff, #f8f9fa);
+                    --tab-text: #000000;
+                    background: var(--tab-bg) !important;
                 }
             `;
             document.head.appendChild(style);

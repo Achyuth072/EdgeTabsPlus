@@ -25,7 +25,9 @@
         "modules/touchHandler.js",
         "content.js"
       ],
-      "css": ["popup/styles.css"]
+      "css": ["popup/styles.css"],
+      "run_at": "document_start",
+      "all_frames": false
     }
   ],
   "action": {

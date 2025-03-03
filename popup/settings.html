@@ -3,8 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Force our own color scheme and prevent browser interference -->
+    <meta name="color-scheme" content="normal">
+    <meta name="forced-colors" content="none">
     <title>EdgeTabs+ Settings</title>
     <link rel="stylesheet" href="settings.css">
+    <style>
+        /* Override browser's forced dark mode */
+        :root {
+            color-scheme: normal !important;
+        }
+        
+        html, body {
+            forced-color-adjust: none !important;
+            -webkit-forced-color-adjust: none !important;
+        }
+    </style>
 </head>
 <body>
     <div class="settings-container">

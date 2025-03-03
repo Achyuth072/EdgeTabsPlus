@@ -5,6 +5,16 @@
     box-sizing: border-box;
 }
 
+/* Color scheme protection - prevent browser from imposing its dark mode */
+:root {
+    color-scheme: normal !important;
+}
+
+html, body {
+    forced-color-adjust: none !important;
+    -webkit-forced-color-adjust: none !important;
+}
+
 /* Theme transition for all color properties */
 body {
     transition: background-color 0.3s ease,
@@ -64,7 +74,8 @@ body {
 
 /* Default to dark theme if no class is applied */
 body:not(.light-theme) {
-    color-scheme: dark;
+    /* Override browser color-scheme - we'll handle this ourselves */
+    color-scheme: normal;
 }
 
 /* Apply dark theme class by default for compatibility */
@@ -96,6 +107,9 @@ body {
     border-radius: 12px 12px 0 0;
     box-shadow: 0 -2px 8px var(--shadow-color);
     background: var(--surface-color);
+    /* Protect from browser theme */
+    forced-color-adjust: none !important;
+    -webkit-forced-color-adjust: none !important;
 }
 
 @keyframes slideUp {

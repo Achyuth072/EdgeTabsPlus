@@ -13,6 +13,10 @@
             this.addButtonContainer = this.createAddButtonContainer();
             this.addButton = this.createAddButton();
             this.setupStrip();
+            
+            // Add additional check to ensure strip is visible
+            this.ensureStripVisibility();
+            
             return this;
         },
 
@@ -24,7 +28,7 @@
             strip.style.left = '0';
             strip.style.width = '100%';
             strip.style.backgroundColor = EdgeTabsPlus.config.tabStrip.backgroundColor;
-            strip.style.zIndex = '2147483647';
+            strip.style.zIndex = '2147483647'; // Maximum z-index value
             strip.style.display = 'flex';
             strip.style.alignItems = 'center';
             strip.style.padding = '0 10px';
@@ -83,6 +87,41 @@
             this.strip.appendChild(this.tabsList);
             this.strip.appendChild(this.addButtonContainer);
             document.body.appendChild(this.strip);
+            
+            // Set additional properties to ensure visibility
+            this.strip.style.visibility = 'visible';
+            this.strip.classList.add('visible');
+        },
+        
+        // New method to ensure the strip is visible
+        ensureStripVisibility() {
+            // Get the stored visibility state
+            chrome.storage.sync.get(['showTabStrip'], (result) => {
+                const shouldShow = result.showTabStrip !== undefined ? result.showTabStrip : true;
+                
+                if (shouldShow && this.strip) {
+                    // Force display if it should be visible
+                    this.strip.style.display = 'flex';
+                    this.strip.style.visibility = 'visible';
+                    this.strip.classList.add('visible');
+                    
+                    // Additional check - if it's still not showing, try adding it to the body again
+                    if (!document.body.contains(this.strip)) {
+                        document.body.appendChild(this.strip);
+                        console.log('Re-added tab strip to body');
+                    }
+                    
+                    // Force a layout recalculation
+                    void this.strip.offsetHeight;
+                }
+                
+                // Log the visibility status
+                if (window.EdgeTabsPlus.logger) {
+                    window.EdgeTabsPlus.logger.addLog(`Tab strip visibility checked: ${shouldShow ? 'visible' : 'hidden'}`);
+                } else {
+                    console.log(`Tab strip visibility checked: ${shouldShow ? 'visible' : 'hidden'}`);
+                }
+            });
         }
     };
 })();
