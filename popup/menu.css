@@ -48,11 +48,6 @@ body {
     --surface-color: #292a2d;
 }
 
-/* Force dark theme by default */
-:root {
-    color-scheme: dark;
-}
-
 body {
     width: 100vw;
     max-width: 600px;
@@ -65,6 +60,18 @@ body {
     /* Use hardware acceleration */
     transform: translateZ(0);
     -webkit-font-smoothing: antialiased;
+}
+
+/* Default to dark theme if no class is applied */
+body:not(.light-theme) {
+    color-scheme: dark;
+}
+
+/* Apply dark theme class by default for compatibility */
+body {
+    /* Default to dark theme */
+    background-color: var(--background-color);
+    color: var(--text-color);
 }
 
 /* Remove global transitions for better performance */
@@ -322,19 +329,6 @@ body {
 .action-button:active {
     transform: scale(0.95);
     transition: transform 0.1s;
-}
-
-/* Dark theme colors - force dark by default */
-body {
-    --background-color: #202124;
-    --text-color: #e8eaed;
-    --secondary-text: #9aa0a6;
-    --divider-color: #3c4043;
-    --hover-color: #3c4043;
-    --toggle-bg: #5f6368;
-    --toggle-active: #8ab4f8;
-    --shadow-color: rgba(0, 0, 0, 0.3);
-    --surface-color: #292a2d;
 }
 
 .action-button i {

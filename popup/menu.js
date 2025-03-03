@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Theme Management
     function setTheme(isDark) {
+        // Apply theme to both HTML and body elements to ensure complete styling
+        document.documentElement.classList.toggle('dark-theme', isDark);
         document.body.classList.toggle('dark-theme', isDark);
         chrome.storage.sync.set({ isDarkMode: isDark });
         
