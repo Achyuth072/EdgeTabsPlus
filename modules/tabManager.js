@@ -3,7 +3,6 @@
 
     EdgeTabsPlus.tabManager = {
         lastTabsState: null,
-        scrollPositionMemory: new Map(), // Store scroll positions per tabId
 
         init() {
             this.setupMessageListeners();
@@ -36,18 +35,6 @@
         async renderTabs(tabs) {
             const tabWidth = this.calculateTabWidth(tabs.length);
             const tabsList = EdgeTabsPlus.uiComponents.tabsList;
-            let activeTabId = null;
-            
-            // Find active tab before rendering
-            const activeTab = tabs.find(tab => tab.active);
-            if (activeTab) {
-                activeTabId = activeTab.id;
-                
-                // Remember the scroll position before re-rendering
-                if (tabsList && EdgeTabsPlus.settings.retainScrollPosition) {
-                    this.scrollPositionMemory.set('lastScrollPosition', tabsList.scrollLeft);
-                }
-            }
             
             tabsList.innerHTML = '';
             
@@ -125,13 +112,6 @@
                 
                 if (tab.active) {
                     tabItem.classList.add('active');
-                    
-                    // Defer scrolling to allow layout to complete
-                    if (EdgeTabsPlus.settings.retainScrollPosition) {
-                        requestAnimationFrame(() => {
-                            this.scrollToActiveTab(tab.id);
-                        });
-                    }
                 }
                 
                 tabItem.appendChild(closeButton);
@@ -145,93 +125,10 @@
         handleTabClick(tab) {
             const tabId = tab.id;
             
-            // Store current scroll position before switching
-            const tabsList = document.getElementById('tabs-list');
-            if (tabsList) {
-                this.scrollPositionMemory.set('lastScrollPosition', tabsList.scrollLeft);
-            }
-            
             chrome.runtime.sendMessage({ 
                 action: 'activateTab', 
                 tabId: tabId 
             });
-            
-            // Use double requestAnimationFrame to ensure full tab switch occurs before scrolling
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    this.scrollToActiveTab(tabId);
-                });
-            });
-        },
-
-        scrollToActiveTab(tabId) {
-            if (!EdgeTabsPlus.settings.retainScrollPosition) return;
-            
-            const tabsList = document.getElementById('tabs-list');
-            const activeTab = tabsList.querySelector(`[data-tab-id="${tabId}"]`);
-            
-            if (!activeTab || !tabsList) return;
-            
-            // Get dimensions
-            const tabLeft = activeTab.offsetLeft;
-            const tabWidth = activeTab.offsetWidth;
-            const listWidth = tabsList.offsetWidth;
-            const totalWidth = tabsList.scrollWidth;
-            let targetScroll = 0;
-            
-            // First check if we have a remembered position for tab switches
-            const lastPosition = this.scrollPositionMemory.get('lastScrollPosition');
-            const shouldUseMemory = lastPosition !== undefined;
-            
-            if (shouldUseMemory) {
-                // Only use the remembered position if the tab would still be visible
-                const viewportStart = lastPosition;
-                const viewportEnd = lastPosition + listWidth;
-                const tabStart = tabLeft;
-                const tabEnd = tabLeft + tabWidth;
-                const wouldBeVisible = tabStart >= viewportStart && tabEnd <= viewportEnd;
-                
-                if (wouldBeVisible) {
-                    // Use the remembered position
-                    targetScroll = lastPosition;
-                    EdgeTabsPlus.logger.addLog(`Using stored scroll position: ${targetScroll}`);
-                } else {
-                    // Calculate optimal scroll position to center the tab
-                    targetScroll = tabLeft - (listWidth - tabWidth) / 2;
-                    EdgeTabsPlus.logger.addLog(`Tab not visible at stored position, centering: ${targetScroll}`);
-                }
-            } else {
-                // Special handling for first and last tabs
-                if (tabLeft === 0) {
-                    // First tab - always scroll to the start
-                    targetScroll = 0;
-                } else if (tabLeft + tabWidth >= totalWidth - 20) {
-                    // Last tab - always scroll to the end with a small buffer
-                    targetScroll = totalWidth - listWidth;
-                } else {
-                    // Calculate optimal scroll position to center the tab
-                    targetScroll = tabLeft - (listWidth - tabWidth) / 2;
-                }
-                EdgeTabsPlus.logger.addLog(`No stored position, calculated scroll: ${targetScroll}`);
-            }
-            
-            // Ensure we're not scrolling beyond bounds
-            targetScroll = Math.max(0, Math.min(targetScroll, totalWidth - listWidth));
-            
-            // Use smooth scrolling with hardware acceleration
-            tabsList.style.scrollBehavior = 'smooth';
-            
-            // Scroll to position with eased animation
-            tabsList.scrollTo({
-                left: targetScroll,
-                behavior: 'smooth'
-            });
-            
-            // Clear memory after use
-            this.scrollPositionMemory.delete('lastScrollPosition');
-            
-            // Update scroll indicators
-            this.updateScrollIndicators();
         },
 
         updateScrollIndicators() {
