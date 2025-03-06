@@ -3,11 +3,22 @@
 
     EdgeTabsPlus.tabManager = {
         lastTabsState: null,
+        scrollPositionMemory: new Map(), // Store scroll positions per tabId
 
         init() {
             this.setupMessageListeners();
             this.requestInitialTabs();
+            this.setupPageVisibilityListener();
             return this;
+        },
+
+        setupPageVisibilityListener() {
+            // Re-check tabs when page becomes visible again
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    this.requestInitialTabs();
+                }
+            });
         },
 
         calculateTabWidth(tabCount) {
@@ -31,6 +42,11 @@
             const activeTab = tabs.find(tab => tab.active);
             if (activeTab) {
                 activeTabId = activeTab.id;
+                
+                // Remember the scroll position before re-rendering
+                if (tabsList && EdgeTabsPlus.settings.retainScrollPosition) {
+                    this.scrollPositionMemory.set('lastScrollPosition', tabsList.scrollLeft);
+                }
             }
             
             tabsList.innerHTML = '';
@@ -109,9 +125,13 @@
                 
                 if (tab.active) {
                     tabItem.classList.add('active');
-                    requestAnimationFrame(() => {
-                        this.scrollToActiveTab(tab.id);
-                    });
+                    
+                    // Defer scrolling to allow layout to complete
+                    if (EdgeTabsPlus.settings.retainScrollPosition) {
+                        requestAnimationFrame(() => {
+                            this.scrollToActiveTab(tab.id);
+                        });
+                    }
                 }
                 
                 tabItem.appendChild(closeButton);
@@ -119,15 +139,24 @@
             }
             
             this.updateMinimalTabs();
+            this.updateScrollIndicators();
         },
 
         handleTabClick(tab) {
             const tabId = tab.id;
+            
+            // Store current scroll position before switching
+            const tabsList = document.getElementById('tabs-list');
+            if (tabsList) {
+                this.scrollPositionMemory.set('lastScrollPosition', tabsList.scrollLeft);
+            }
+            
             chrome.runtime.sendMessage({ 
                 action: 'activateTab', 
                 tabId: tabId 
             });
             
+            // Use double requestAnimationFrame to ensure full tab switch occurs before scrolling
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     this.scrollToActiveTab(tabId);
@@ -148,47 +177,72 @@
             const tabWidth = activeTab.offsetWidth;
             const listWidth = tabsList.offsetWidth;
             const totalWidth = tabsList.scrollWidth;
-            const currentScroll = tabsList.scrollLeft;
+            let targetScroll = 0;
             
-            // Determine if tab is fully visible
-            const tabStart = tabLeft;
-            const tabEnd = tabLeft + tabWidth;
-            const viewportStart = currentScroll;
-            const viewportEnd = currentScroll + listWidth;
-            const isTabFullyVisible = tabStart >= viewportStart && tabEnd <= viewportEnd;
+            // First check if we have a remembered position for tab switches
+            const lastPosition = this.scrollPositionMemory.get('lastScrollPosition');
+            const shouldUseMemory = lastPosition !== undefined;
             
-            // If tab is already fully visible and not at edges, don't scroll
-            if (isTabFullyVisible && tabStart > 0 && tabEnd < totalWidth) return;
-            
-            // Special handling for first and last tabs
-            if (tabLeft === 0) {
-                // First tab - always scroll to the start
-                targetScroll = 0;
-            } else if (tabLeft + tabWidth >= totalWidth) {
-                // Last tab - always scroll to the end
-                targetScroll = totalWidth - listWidth;
+            if (shouldUseMemory) {
+                // Only use the remembered position if the tab would still be visible
+                const viewportStart = lastPosition;
+                const viewportEnd = lastPosition + listWidth;
+                const tabStart = tabLeft;
+                const tabEnd = tabLeft + tabWidth;
+                const wouldBeVisible = tabStart >= viewportStart && tabEnd <= viewportEnd;
+                
+                if (wouldBeVisible) {
+                    // Use the remembered position
+                    targetScroll = lastPosition;
+                    EdgeTabsPlus.logger.addLog(`Using stored scroll position: ${targetScroll}`);
+                } else {
+                    // Calculate optimal scroll position to center the tab
+                    targetScroll = tabLeft - (listWidth - tabWidth) / 2;
+                    EdgeTabsPlus.logger.addLog(`Tab not visible at stored position, centering: ${targetScroll}`);
+                }
             } else {
-                // Calculate optimal scroll position to center the tab
-                targetScroll = tabLeft - (listWidth - tabWidth) / 2;
-                // Adjust for boundaries
-                targetScroll = Math.max(0, Math.min(targetScroll, totalWidth - listWidth));
+                // Special handling for first and last tabs
+                if (tabLeft === 0) {
+                    // First tab - always scroll to the start
+                    targetScroll = 0;
+                } else if (tabLeft + tabWidth >= totalWidth - 20) {
+                    // Last tab - always scroll to the end with a small buffer
+                    targetScroll = totalWidth - listWidth;
+                } else {
+                    // Calculate optimal scroll position to center the tab
+                    targetScroll = tabLeft - (listWidth - tabWidth) / 2;
+                }
+                EdgeTabsPlus.logger.addLog(`No stored position, calculated scroll: ${targetScroll}`);
             }
             
             // Ensure we're not scrolling beyond bounds
-            const sanitizedTargetScroll = Math.max(0, Math.min(targetScroll, totalWidth - listWidth));
+            targetScroll = Math.max(0, Math.min(targetScroll, totalWidth - listWidth));
             
-            // Cancel any ongoing smooth scrolls first
-            tabsList.style.scrollBehavior = 'auto';
-            tabsList.scrollLeft = currentScroll; // Ensure we're starting from the current position
+            // Use smooth scrolling with hardware acceleration
+            tabsList.style.scrollBehavior = 'smooth';
             
-            requestAnimationFrame(() => {
-                // Reset scroll behavior and perform the scroll
-                tabsList.style.scrollBehavior = 'smooth';
-                tabsList.scrollTo({
-                    left: sanitizedTargetScroll,
-                    behavior: 'smooth'
-                });
+            // Scroll to position with eased animation
+            tabsList.scrollTo({
+                left: targetScroll,
+                behavior: 'smooth'
             });
+            
+            // Clear memory after use
+            this.scrollPositionMemory.delete('lastScrollPosition');
+            
+            // Update scroll indicators
+            this.updateScrollIndicators();
+        },
+
+        updateScrollIndicators() {
+            const tabsList = document.getElementById('tabs-list');
+            if (!tabsList) return;
+            
+            const hasLeftScroll = tabsList.scrollLeft > 10;
+            const hasRightScroll = tabsList.scrollLeft < (tabsList.scrollWidth - tabsList.clientWidth - 10);
+            
+            tabsList.classList.toggle('scroll-left', hasLeftScroll);
+            tabsList.classList.toggle('scroll-right', hasRightScroll);
         },
 
         updateMinimalTabs() {

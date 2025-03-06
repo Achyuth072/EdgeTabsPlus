@@ -6,9 +6,14 @@
         scrollLeft: null,
         isDragging: false,
         lastX: null,
+        lastY: null,
         lastTime: null,
         velocity: 0,
         momentumRAF: null,
+        touchStartDirection: null,
+        isHorizontalScroll: false,
+        touchPositions: [],
+        maxVelocityCapture: 5,
 
         init() {
             // Initialize timing properties
@@ -23,21 +28,21 @@
             const tabsList = EdgeTabsPlus.uiComponents.tabsList;
             
             // Enhanced hardware acceleration and smooth scrolling
-            tabsList.style.transform = 'translate3d(0,0,0)';
-            tabsList.style.backfaceVisibility = 'hidden';
-            tabsList.style.perspective = '1000';
-            tabsList.style.willChange = 'transform';  // More specific than scroll-position
-            tabsList.style.overscrollBehavior = 'contain';
-            tabsList.style.scrollBehavior = 'smooth';
-            
-            // Ensure proper rendering on high refresh rate displays
-            tabsList.style.imageRendering = 'auto';
-            tabsList.style.textRendering = 'optimizeLegibility';
-            
-            this.addTouchListeners(tabsList);
-            
-            // Add smooth scrolling class for CSS control
-            tabsList.classList.add('smooth-scroll');
+            if (tabsList) {
+                // Force hardware acceleration
+                tabsList.style.transform = 'translate3d(0,0,0)';
+                tabsList.style.backfaceVisibility = 'hidden';
+                tabsList.style.perspective = '1000';
+                tabsList.style.willChange = 'transform, scroll-position';
+                tabsList.style.overscrollBehavior = 'contain';
+                
+                // Add CSS class for styling
+                tabsList.classList.add('tabs-list');
+                
+                // Add these listeners with proper options
+                this.addTouchListeners(tabsList);
+                this.addMouseListeners(tabsList);
+            }
         },
 
         addTouchListeners(tabsList) {
@@ -46,183 +51,299 @@
             tabsList.addEventListener('touchend', this.onTouchEnd.bind(this), { passive: true });
             tabsList.addEventListener('touchcancel', this.onTouchEnd.bind(this), { passive: true });
         },
-
-        onTouchStart(e) {
-            this.isDragging = true;
-            this.startX = e.touches[0].pageX;
-            this.lastX = this.startX;
-            this.lastTime = performance.now();
-            this.scrollLeft = EdgeTabsPlus.uiComponents.tabsList.scrollLeft;
-            this.velocity = 0;
-            this.maxSpeed = 0; // Reset max speed for new gesture
+        
+        addMouseListeners(tabsList) {
+            // Add mouse support for desktop testing
+            tabsList.addEventListener('mousedown', this.onMouseDown.bind(this));
+            window.addEventListener('mousemove', this.onMouseMove.bind(this));
+            window.addEventListener('mouseup', this.onMouseUp.bind(this));
+            
+            // Add wheel smooth scrolling with horizontal support
+            tabsList.addEventListener('wheel', this.onWheel.bind(this), { passive: false });
+        },
+        
+        onWheel(e) {
+            // Handle horizontal wheel scrolling
+            if (e.deltaX !== 0) {
+                // Native horizontal wheel - let the browser handle it
+                return;
+            }
+            
+            // Convert vertical scroll to horizontal for touchpads and mice
+            if (Math.abs(e.deltaY) > 0) {
+                e.preventDefault();
+                const tabsList = EdgeTabsPlus.uiComponents.tabsList;
+                
+                if (!tabsList) return;
+                
+                // Faster scroll for desktop devices
+                const scrollMultiplier = 2.0;
+                const newScrollLeft = tabsList.scrollLeft + (e.deltaY * scrollMultiplier);
+                
+                // Smooth scroll to the new position
+                tabsList.scrollTo({
+                    left: newScrollLeft,
+                    behavior: 'smooth'
+                });
+            }
+        },
+        
+        onMouseDown(e) {
+            if (e.button !== 0) return; // Only handle left mouse button
             
             const tabsList = EdgeTabsPlus.uiComponents.tabsList;
             if (!tabsList) return;
             
-            // Cancel any ongoing animations
-            cancelAnimationFrame(this.momentumRAF);
-            cancelAnimationFrame(this.scrollRAF);
+            e.preventDefault();
+            this.isDragging = true;
+            this.startX = e.pageX;
+            this.lastX = this.startX;
+            this.lastTime = performance.now();
+            this.scrollLeft = tabsList.scrollLeft;
+            this.velocity = 0;
+            this.touchPositions = [];
             
-            // Clean up transitions and prepare for new gesture
-            tabsList.classList.remove('fast-scroll');
+            // Prepare for high-precision tracking
             tabsList.style.scrollBehavior = 'auto';
-            tabsList.style.transition = 'none';
-            
-            // Reset after frame to ensure clean state
-            requestAnimationFrame(() => {
-                tabsList.style.transition = '';
-            });
+            tabsList.classList.add('grabbing');
+            document.body.classList.add('no-select');
         },
-
-onTouchMove(e) {
-    if (!this.isDragging) return;
-    
-    const tabsList = EdgeTabsPlus.uiComponents.tabsList;
-    if (!tabsList) return;
-    
-    const currentTime = performance.now();
-    const x = e.touches[0].pageX;
-    const deltaX = x - this.lastX;
-    const deltaTime = currentTime - this.lastTime;
-    
-    // Skip if too soon (prevent oversampling)
-    if (deltaTime < 4) return;
-    
-    // Pure velocity calculation without artificial boosting
-    const instantSpeed = Math.abs(deltaX / deltaTime);
-    
-    // Ultra-responsive flick detection
-    const isFlickGesture = instantSpeed > 0.3; // Much lower threshold to catch even gentle flicks
-    
-    if (isFlickGesture) {
-        cancelAnimationFrame(this.scrollRAF);
-        cancelAnimationFrame(this.momentumRAF);
         
-        // Calculate velocity with speed scaling
-        const baseVelocity = deltaX / deltaTime;
-        const speedScale = Math.min(4.0, Math.max(2.0, Math.abs(baseVelocity))); // Dynamic scaling
-        this.velocity = baseVelocity * speedScale;
+        onMouseMove(e) {
+            if (!this.isDragging) return;
+            
+            const tabsList = EdgeTabsPlus.uiComponents.tabsList;
+            if (!tabsList) return;
+            
+            const currentTime = performance.now();
+            const deltaTime = currentTime - this.lastTime;
+            
+            // Skip if too soon (prevent oversampling)
+            if (deltaTime < 8) return;
+            
+            const x = e.pageX;
+            const deltaX = this.lastX - x;
+            
+            // Store position for velocity calculation (keep last 5 positions)
+            this.touchPositions.push({
+                x: x,
+                time: currentTime
+            });
+            
+            if (this.touchPositions.length > this.maxVelocityCapture) {
+                this.touchPositions.shift();
+            }
+            
+            // Update scroll position
+            tabsList.scrollLeft = this.scrollLeft + (this.startX - x);
+            
+            // Update tracking
+            this.lastX = x;
+            this.lastTime = currentTime;
+        },
         
-        // Immediate position update for responsiveness
-        const newScrollLeft = this.scrollLeft - (x - this.startX);
-        const maxScroll = tabsList.scrollWidth - tabsList.clientWidth;
-        const boundedScrollLeft = Math.max(0, Math.min(newScrollLeft, maxScroll));
-        tabsList.scrollLeft = boundedScrollLeft;
-    } else {
-        // Normal scrolling for slower movements
-        const newScrollLeft = this.scrollLeft - (x - this.startX);
-        const maxScroll = tabsList.scrollWidth - tabsList.clientWidth;
-        const boundedScrollLeft = Math.max(0, Math.min(newScrollLeft, maxScroll));
-        
-        this.scrollRAF = requestAnimationFrame(() => {
-            tabsList.scrollLeft = boundedScrollLeft;
-            this.velocity = deltaX / deltaTime;
-        });
-    }
-    
-    // Update tracking
-    this.lastX = x;
-    this.lastTime = currentTime;
-    
-    // Reset fast-scroll state after a delay
-    if (this.fastScrollTimeout) {
-        clearTimeout(this.fastScrollTimeout);
-    }
-    this.fastScrollTimeout = setTimeout(() => {
-        tabsList.classList.remove('fast-scroll');
-        tabsList.style.scrollBehavior = 'smooth';
-    }, 100);
-},
-
-        onTouchEnd() {
+        onMouseUp(e) {
             if (!this.isDragging) return;
             this.isDragging = false;
             
             const tabsList = EdgeTabsPlus.uiComponents.tabsList;
             if (!tabsList) return;
             
-            const maxScroll = tabsList.scrollWidth - tabsList.clientWidth;
-            // Calculate final flick velocity using the most recent movement
-            const finalVelocity = Math.abs(this.velocity);
-            const isFlick = finalVelocity > 1.5; // Lower threshold for flicks
+            // Calculate final velocity from stored positions
+            this.calculateFinalVelocity();
             
-            // Enhanced flick scrolling
-            if (isFlick) {
-                // Much higher boost for flicks
-                this.velocity *= 3.0; // Triple the initial velocity
-                
-                tabsList.classList.add('fast-scroll');
-                tabsList.style.scrollBehavior = 'auto';
-                
-                const flickMomentum = () => {
-                    // Direct velocity application without frame timing for faster response
-                    const newScrollLeft = tabsList.scrollLeft - (this.velocity * 20); // Increased multiplier
-                    const boundedScrollLeft = Math.max(0, Math.min(newScrollLeft, maxScroll));
-                    
-                    tabsList.scrollLeft = boundedScrollLeft;
-                    
-                    // Variable deceleration based on speed
-                    const currentSpeed = Math.abs(this.velocity);
-                    if (currentSpeed > 3) {
-                        this.velocity *= 0.98; // Very slow deceleration at high speeds
-                    } else if (currentSpeed > 1) {
-                        this.velocity *= 0.95; // Medium deceleration
-                    } else {
-                        this.velocity *= 0.9; // Faster deceleration at low speeds
-                    }
-                    
-                    if (Math.abs(this.velocity) > 0.1 &&
-                        boundedScrollLeft !== 0 &&
-                        boundedScrollLeft !== maxScroll) {
-                        this.momentumRAF = requestAnimationFrame(flickMomentum);
-                    } else {
-                        tabsList.classList.remove('fast-scroll');
-                        this.snapToNearestTab(tabsList);
-                    }
-                };
-                
-                // Start fast momentum immediately
-                fastMomentum();
+            // Apply momentum if velocity is high enough
+            if (Math.abs(this.velocity) > 0.5) {
+                this.applyScrollMomentum(tabsList);
             } else {
-                // Normal snap behavior for slower movements
-                this.snapToNearestTab(tabsList);
+                // Otherwise just snap to the nearest tab
+                tabsList.style.scrollBehavior = 'smooth';
+                EdgeTabsPlus.scrollHandler.snapToNearestTabAfterScroll(tabsList);
+            }
+            
+            // Clean up
+            tabsList.classList.remove('grabbing');
+            document.body.classList.remove('no-select');
+        },
+
+        onTouchStart(e) {
+            this.isDragging = true;
+            this.isHorizontalScroll = null; // Reset direction detection
+            this.touchStartDirection = null;
+            this.startX = e.touches[0].pageX;
+            this.startY = e.touches[0].pageY;
+            this.lastX = this.startX;
+            this.lastY = this.startY;
+            this.lastTime = performance.now();
+            this.touchPositions = []; // Reset position tracking
+            
+            const tabsList = EdgeTabsPlus.uiComponents.tabsList;
+            if (!tabsList) return;
+            
+            this.scrollLeft = tabsList.scrollLeft;
+            this.velocity = 0;
+            
+            // Cancel any ongoing animations
+            cancelAnimationFrame(this.momentumRAF);
+            cancelAnimationFrame(this.scrollRAF);
+            
+            // Clear transitions and prepare for new gesture
+            tabsList.style.scrollBehavior = 'auto';
+        },
+
+        onTouchMove(e) {
+            if (!this.isDragging) return;
+            
+            const tabsList = EdgeTabsPlus.uiComponents.tabsList;
+            if (!tabsList) return;
+            
+            const currentTime = performance.now();
+            const x = e.touches[0].pageX;
+            const y = e.touches[0].pageY;
+            
+            // Detect scroll direction on initial movement
+            if (this.isHorizontalScroll === null) {
+                const deltaX = Math.abs(x - this.startX);
+                const deltaY = Math.abs(y - this.startY);
+                
+                // If we've moved enough to determine direction
+                if (deltaX > 5 || deltaY > 5) {
+                    this.isHorizontalScroll = deltaX > deltaY;
+                    this.touchStartDirection = this.isHorizontalScroll ? 'horizontal' : 'vertical';
+                    
+                    // If vertical scrolling detected, exit early and don't prevent default
+                    if (!this.isHorizontalScroll) {
+                        this.isDragging = false; // Let native vertical scrolling take over
+                        return;
+                    }
+                }
+            }
+            
+            // Only process horizontal scrolling
+            if (this.isHorizontalScroll) {
+                const deltaX = this.lastX - x;
+                const deltaTime = currentTime - this.lastTime;
+                
+                // Store position data for momentum calculation (keep last 5 positions)
+                this.touchPositions.push({
+                    x: x,
+                    time: currentTime
+                });
+                
+                if (this.touchPositions.length > this.maxVelocityCapture) {
+                    this.touchPositions.shift();
+                }
+                
+                // Skip if too soon (prevent oversampling)
+                if (deltaTime < 8) return;
+                
+                // Apply movement
+                tabsList.scrollLeft += deltaX * 1.0; // Multiplier for better tracking
+                
+                // Update tracking variables
+                this.lastX = x;
+                this.lastY = y;
+                this.lastTime = currentTime;
+            }
+        },
+
+        onTouchEnd(e) {
+            if (!this.isDragging) {
+                return;
+            }
+            
+            if (this.isHorizontalScroll) {
+                const tabsList = EdgeTabsPlus.uiComponents.tabsList;
+                if (!tabsList) {
+                    this.isDragging = false;
+                    return;
+                }
+                
+                // Calculate final velocity based on touch history
+                this.calculateFinalVelocity();
+                
+                // Apply momentum if velocity is high enough
+                if (Math.abs(this.velocity) > 0.5) {
+                    this.applyScrollMomentum(tabsList);
+                } else {
+                    // Otherwise just snap to the nearest tab
+                    tabsList.style.scrollBehavior = 'smooth';
+                    EdgeTabsPlus.scrollHandler.snapToNearestTabAfterScroll(tabsList);
+                }
+            }
+            
+            this.isDragging = false;
+        },
+        
+        calculateFinalVelocity() {
+            // If we have enough position data
+            if (this.touchPositions.length >= 2) {
+                const newest = this.touchPositions[this.touchPositions.length - 1];
+                const oldest = this.touchPositions[0];
+                
+                const deltaX = newest.x - oldest.x;
+                const deltaTime = newest.time - oldest.time;
+                
+                if (deltaTime > 0) {
+                    // Calculate pixels per millisecond
+                    this.velocity = deltaX / deltaTime;
+                    
+                    // Apply non-linear amplification for faster swipes
+                    const absVel = Math.abs(this.velocity);
+                    if (absVel > 1.0) {
+                        const scale = 1.0 + (absVel - 1.0) * 0.2; // Progressive scaling
+                        this.velocity *= scale;
+                    }
+                }
+            } else {
+                this.velocity = 0;
             }
         },
         
-        snapToNearestTab(tabsList) {
+        applyScrollMomentum(tabsList) {
             if (!tabsList) return;
             
-            const tabWidth = tabsList.firstElementChild?.offsetWidth || 0;
-            if (tabWidth > 0) {
-                const currentScroll = tabsList.scrollLeft;
-                const targetScroll = Math.round(currentScroll / tabWidth) * tabWidth;
+            // Apply physics-based scrolling with easing
+            let startTime = null;
+            let startPosition = tabsList.scrollLeft;
+            let initialVelocity = this.velocity;
+            const maxScrollLeft = tabsList.scrollWidth - tabsList.clientWidth;
+            const deceleration = 0.95; // Deceleration rate (higher = longer slide)
+            const minVelocity = 0.05; // Stop threshold
+            
+            const animateMomentum = (timestamp) => {
+                if (!startTime) startTime = timestamp;
+                const elapsed = timestamp - startTime;
                 
-                if (Math.abs(currentScroll - targetScroll) > 2) {
-                    // Only snap if we're more than 2px away from target
-                    const startPosition = currentScroll;
-                    const distance = targetScroll - startPosition;
-                    const duration = 150; // Short duration for snap
-                    let startTime = null;
+                // Apply deceleration based on elapsed time
+                const decayFactor = Math.pow(deceleration, elapsed / 16); // Normalized to 60fps
+                const currentVelocity = initialVelocity * decayFactor;
+                
+                // If we've slowed down enough or reached the end, snap to nearest tab
+                if (Math.abs(currentVelocity) < minVelocity || 
+                    tabsList.scrollLeft <= 0 || 
+                    tabsList.scrollLeft >= maxScrollLeft) {
                     
-                    const animate = (currentTime) => {
-                        if (!startTime) startTime = currentTime;
-                        const elapsed = currentTime - startTime;
-                        const progress = Math.min(elapsed / duration, 1);
-                        
-                        // Easing function for smooth motion
-                        const easeProgress = 1 - Math.pow(1 - progress, 3);
-                        
-                        const currentPosition = startPosition + (distance * easeProgress);
-                        tabsList.scrollLeft = currentPosition;
-                        
-                        if (progress < 1) {
-                            requestAnimationFrame(animate);
-                        }
-                    };
-                    
-                    requestAnimationFrame(animate);
+                    tabsList.style.scrollBehavior = 'smooth';
+                    EdgeTabsPlus.scrollHandler.snapToNearestTabAfterScroll(tabsList);
+                    return;
                 }
-            }
+                
+                // Calculate new position based on current velocity
+                const delta = currentVelocity * -12; // Scale factor for visible movement
+                tabsList.scrollLeft += delta;
+                
+                // Continue animation
+                this.momentumRAF = requestAnimationFrame(animateMomentum);
+            };
+            
+            // Start animation loop
+            this.momentumRAF = requestAnimationFrame(animateMomentum);
+        },
+        
+        // Additional helper methods
+        isFlickGesture() {
+            return Math.abs(this.velocity) > 1.0;
         }
     };
 })();

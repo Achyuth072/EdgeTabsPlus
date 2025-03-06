@@ -8,6 +8,7 @@
             this.injectBaseStyles();
             this.injectTabWidthStyles();
             this.injectTabStateStyles();
+            this.injectScrollingStyles(); // Add scrolling specific styles
             this.injectAdditionalStyles();
             this.injectColorSchemeControl();
             return this;
@@ -98,14 +99,13 @@
                     opacity: 1 !important;
                 }
                 
+                /* Improved tabs list base styles */
                 #edgetabs-plus-strip ul {
                     pointer-events: auto;
                     touch-action: pan-x;
                     overflow-x: auto;
                     overflow-y: hidden;
                     gap: 2px;
-                    scroll-snap-type: none;  // Disable snap during scroll
-                    scroll-behavior: auto;   // Let JS handle smooth scrolling
                     -webkit-overflow-scrolling: touch;
                     -ms-overflow-style: none;
                     scrollbar-width: none;
@@ -121,6 +121,17 @@
                     backface-visibility: hidden;
                     perspective: 1000;
                     overscroll-behavior-x: contain;
+                    cursor: grab;
+                }
+
+                /* Add grabbing cursor when actively scrolling */
+                #edgetabs-plus-strip ul.grabbing {
+                    cursor: grabbing;
+                }
+
+                /* Hide scrollbars but keep functionality */
+                #edgetabs-plus-strip ul::-webkit-scrollbar {
+                    display: none;
                 }
 
                 /* Add tab button container */
@@ -162,35 +173,48 @@
                     overflow: hidden !important;
                     border-radius: 8px !important;
                     justify-content: space-between !important;
-                    scroll-snap-align: start;
-                    scroll-snap-stop: always;
-                    transition: width 0.3s ease-out !important;
+                    transition: width 0.3s ease-out, transform 0.2s ease-out !important;
                     width: var(--tab-width, 180px) !important;
                     flex: 0 0 var(--tab-width, 180px) !important;
                 }
 
                 .close-tab {
                     position: absolute !important;
-                    right: 2px !important;
+                    right: 1px !important;
                     top: 50% !important;
                     transform: translateY(-50%) !important;
-                    width: 24px !important;
-                    height: 24px !important;
+                    width: 30px !important;
+                    height: 30px !important;
                     display: flex !important;
                     align-items: center !important;
                     justify-content: center !important;
                     background: transparent !important;
                     border-radius: 50% !important;
-                    font-size: 18px !important;
+                    font-size: 24px !important;
+                    font-weight: 700 !important;
                     line-height: 1 !important;
                     color: #666 !important;
                     z-index: 1 !important;
+                    cursor: pointer !important;
+                    -webkit-tap-highlight-color: transparent !important;
                 }
 
                 .close-tab:hover {
                     background-color: rgba(0, 0, 0, 0.05) !important;
                     border-radius: 50% !important;
                     transition: background-color 0.2s ease !important;
+                }
+
+                /* Add active state for better touch feedback */
+                .close-tab:active {
+                    background-color: rgba(0, 0, 0, 0.1) !important;
+                    transform: translateY(-50%) scale(0.95) !important;
+                }
+
+                /* Add feedback for tab clicks */
+                .tab-item:active {
+                    transform: scale(0.98) !important;
+                    transition: transform 0.1s ease-out !important;
                 }
 
                 #log-overlay {
@@ -229,6 +253,12 @@
 
                 #log-toggle-button:active {
                     transform: scale(0.95);
+                }
+                
+                /* Add a class for preventing text selection during drag */
+                body.no-select {
+                    user-select: none;
+                    -webkit-user-select: none;
                 }
             `;
             document.head.appendChild(style);
@@ -286,6 +316,157 @@
                 }
             `;
             document.head.appendChild(style);
+        },
+        
+        injectScrollingStyles() {
+            const style = document.createElement('style');
+            style.id = 'edgetabs-scrolling-styles';
+            style.textContent = `
+                /* Enhanced scrolling and touch interaction */
+                .tabs-list {
+                    scroll-snap-type: x proximity;
+                    scroll-behavior: smooth;
+                    -webkit-overflow-scrolling: touch;
+                    overscroll-behavior-x: contain;
+                    cursor: grab;
+                }
+                
+                .tabs-list.grabbing {
+                    cursor: grabbing !important;
+                }
+                
+                /* Scroll snap alignment */
+                .tab-item {
+                    scroll-snap-align: center;
+                    scroll-snap-stop: always;
+                }
+                
+                /* Hover and focus effects for tab items */
+                .tab-item:hover {
+                    transform: translateY(-1px) scale(1.01);
+                    box-shadow: 0 2px 8px var(--tab-shadow);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+                
+                .tab-item:active {
+                    transform: translateY(0) scale(0.99);
+                    transition: transform 0.1s ease;
+                }
+                
+                /* Active tab styling enhancements */
+                .tab-item.active {
+                    transform: translateY(-2px) scale(1.03) !important;
+                    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+                    z-index: 10 !important;
+                }
+                
+                /* Scroll progress indicators */
+                .tabs-list::before,
+                .tabs-list::after {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    bottom: 0;
+                    width: 20px;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                    pointer-events: none;
+                    z-index: 10;
+                }
+                
+                .tabs-list::before {
+                    left: 0;
+                    background: linear-gradient(to right, var(--strip-bg), transparent);
+                    opacity: 0;
+                }
+                
+                .tabs-list::after {
+                    right: 0;
+                    background: linear-gradient(to left, var(--strip-bg), transparent);
+                    opacity: 0;
+                }
+                
+                .tabs-list.scroll-left::before {
+                    opacity: 0.8;
+                }
+                
+                .tabs-list.scroll-right::after {
+                    opacity: 0.8;
+                }
+                
+                /* Smooth animation for all transitions */
+                @media (prefers-reduced-motion: no-preference) {
+                    .tab-item, .tabs-list {
+                        transition-duration: 0.25s;
+                        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+                    }
+                }
+                
+                /* Add subtle bounce effect when reaching scroll limits */
+                .tabs-list {
+                    overscroll-behavior-x: contain;
+                }
+                
+                /* Enhanced touch feedback */
+                .tab-item {
+                    -webkit-tap-highlight-color: transparent !important;
+                    touch-action: pan-x !important;
+                }
+                
+                /* Tab interaction feedback */
+                .tab-item:active:not(.active) {
+                    opacity: 0.85;
+                    transform: scale(0.98);
+                    transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+                }
+                
+                /* Active tab feedback */
+                .tab-item.active:active {
+                    transform: translateY(-1px) scale(0.99) !important;
+                }
+                
+                /* Edge bounce effect for mobile */
+                @supports (-webkit-overflow-scrolling: touch) {
+                    .tabs-list {
+                        padding: 0 16px;
+                    }
+                    
+                    .tabs-list::before,
+                    .tabs-list::after {
+                        width: 30px; /* Wider gradient on mobile */
+                    }
+                    
+                    /* Increase touch targets for mobile */
+                    .close-tab {
+                        width: 34px !important;
+                        height: 34px !important;
+                    }
+                    
+                    /* More pronounced active states for touch */
+                    .tab-item:active {
+                        opacity: 0.8;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Also add event listener to show scroll indicators
+            setTimeout(() => {
+                const tabsList = document.getElementById('tabs-list');
+                if (tabsList) {
+                    tabsList.addEventListener('scroll', () => {
+                        const hasLeftScroll = tabsList.scrollLeft > 10;
+                        const hasRightScroll = tabsList.scrollLeft < (tabsList.scrollWidth - tabsList.clientWidth - 10);
+                        
+                        tabsList.classList.toggle('scroll-left', hasLeftScroll);
+                        tabsList.classList.toggle('scroll-right', hasRightScroll);
+                    }, { passive: true });
+                    
+                    // Trigger initial check
+                    const event = new Event('scroll');
+                    tabsList.dispatchEvent(event);
+                }
+            }, 500);
         },
 
         injectAdditionalStyles() {
