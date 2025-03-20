@@ -10,6 +10,10 @@
     <title>EdgeTabs+ Menu</title>
     <link rel="stylesheet" href="menu.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Load essential modules -->
+    <script src="../modules/namespace.js"></script>
+    <script src="../modules/config.js"></script>
+    <script src="../modules/tabManager.js"></script>
 </head>
 <body class="dark-theme">
     <div class="menu-container" role="dialog" aria-label="EdgeTabs+ Menu">
@@ -68,18 +72,11 @@
                 <span>Close Tab</span>
             </button>
 
-            <button class="action-button" 
-                    id="reloadBtn" 
+            <button class="action-button"
+                    id="reloadBtn"
                     aria-label="Reload Current Tab">
                 <i class="material-icons" aria-hidden="true">refresh</i>
                 <span>Reload</span>
-            </button>
-
-            <button class="action-button" 
-                    id="settingsBtn" 
-                    aria-label="Open Settings">
-                <i class="material-icons" aria-hidden="true">settings</i>
-                <span>Settings</span>
             </button>
         </div>
     </div>

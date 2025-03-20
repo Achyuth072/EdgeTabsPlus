@@ -1,16 +1,100 @@
 // Initialize menu functionality
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('Menu initializing...'); // Direct console logging for debugging
+
+    // Initialize required modules
+    let retries = 5;
+    while (retries > 0) {
+        if (window.EdgeTabsPlus) {
+            try {
+                const { tabManager, config } = window.EdgeTabsPlus;
+                await config.init();
+                await tabManager.init();
+                break;
+            } catch (error) {
+                console.error(`Module initialization failed (${retries} retries left):`, error);
+                retries--;
+                if (retries === 0) {
+                    console.error('Failed to initialize modules after all retries');
+                    return;
+                }
+                await new Promise(resolve => setTimeout(resolve, 200));
+                continue;
+            }
+        } else {
+            console.log(`Waiting for EdgeTabsPlus namespace... (${retries} retries left)`);
+            retries--;
+            if (retries === 0) {
+                console.error('EdgeTabsPlus namespace not available after all retries');
+                return;
+            }
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+    }
 
     // Get UI elements
     const toggleActions = document.querySelectorAll('.toggle-action');
     const themeToggle = document.getElementById('themeToggle');
+    const addTabButton = document.getElementById('add-tab');
     const buttons = {
         newTab: document.getElementById('newTabBtn'),
         closeTab: document.getElementById('closeTabBtn'),
-        reload: document.getElementById('reloadBtn'),
-        settings: document.getElementById('settingsBtn')
+        reload: document.getElementById('reloadBtn')
     };
+
+    // Initialize tabs list
+    chrome.tabs.query({ currentWindow: true }, (tabs) => {
+        tabManager.renderTabs(tabs).catch(error => {
+            console.error('Failed to render initial tabs:', error);
+        });
+    });
+
+    // Listen for tab updates
+    chrome.runtime.onMessage.addListener((request) => {
+        if (request.action === 'tabsUpdated' && request.tabs) {
+            tabManager.renderTabs(request.tabs).catch(error => {
+                console.error('Failed to render updated tabs:', error);
+            });
+        }
+    });
+
+    // Add tab button handler with long-press support
+    let pressTimer;
+    if (addTabButton) {
+        addTabButton.addEventListener('mousedown', () => {
+            pressTimer = setTimeout(() => {
+                chrome.action.openPopup();
+            }, 500);
+        });
+
+        addTabButton.addEventListener('mouseup', () => {
+            clearTimeout(pressTimer);
+            chrome.runtime.sendMessage({ action: 'createTab' });
+        });
+
+        addTabButton.addEventListener('mouseleave', () => {
+            clearTimeout(pressTimer);
+        });
+
+        // Touch event support
+        addTabButton.addEventListener('touchstart', (e) => {
+            pressTimer = setTimeout(() => {
+                chrome.action.openPopup();
+            }, 500);
+        });
+
+        addTabButton.addEventListener('touchend', (e) => {
+            clearTimeout(pressTimer);
+            if (e.cancelable) {
+                e.preventDefault();
+                chrome.runtime.sendMessage({ action: 'createTab' });
+            }
+        });
+
+        addTabButton.addEventListener('touchcancel', () => {
+            clearTimeout(pressTimer);
+        });
+    }
 
     // Theme Management
     function setTheme(isDark) {
@@ -140,14 +224,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tabs[0]) chrome.tabs.reload(tabs[0].id);
                 window.close();
             });
-        });
-    }
-
-    if (buttons.settings) {
-        buttons.settings.addEventListener('click', () => {
-            console.log('Opening settings...');
-            chrome.runtime.openOptionsPage();
-            window.close();
         });
     }
 
