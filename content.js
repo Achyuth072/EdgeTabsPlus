@@ -17,18 +17,25 @@
             EdgeTabsPlus.logger.init();
             
             // Initialize states from storage
-            chrome.storage.sync.get(['isDarkMode', 'showTabStrip', 'autoHide'], (result) => {
-                // Theme initialization - set theme immediately to prevent flash
-                const isDark = result.isDarkMode !== undefined ? result.isDarkMode : true;
+            chrome.storage.sync.get(['theme', 'isDarkMode', 'showTabStrip', 'autoHide'], (result) => {
+                // Theme initialization
+                let theme = result.theme;
+                if (!theme) {
+                    // Fallback to old isDarkMode setting or system preference
+                    const isDark = result.isDarkMode !== undefined ? result.isDarkMode :
+                                 window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    theme = isDark ? 'dark' : 'light';
+                }
                 
-                // Apply theme to both html and body elements
-                document.documentElement.classList.toggle('dark-theme', isDark);
-                document.body.classList.toggle('dark-theme', isDark);
+                // Apply theme to host element
+                const host = document.getElementById('edgetabs-plus-host');
+                if (host) {
+                    host.setAttribute('theme', theme);
+                    // Store theme state for quick access
+                    window.EdgeTabsPlus.currentTheme = theme;
+                }
                 
-                // Store theme state for quick access
-                window.EdgeTabsPlus.currentTheme = isDark ? 'dark' : 'light';
-                
-                EdgeTabsPlus.logger.addLog(`Initialized theme: ${isDark ? 'dark' : 'light'} mode`);
+                EdgeTabsPlus.logger.addLog(`Initialized theme: ${theme} mode`);
                 
                 // Tab strip visibility initialization
                 const tabStrip = document.getElementById('edgetabs-plus-strip');
@@ -92,40 +99,40 @@
         const { logger } = window.EdgeTabsPlus;
 
         switch (message.action) {
-            case 'updateTheme':
+            case 'themeChanged':
                 try {
-                    logger.addLog('Received theme update message:', message);
+                    logger.addLog('Received theme change message:', message);
+                    const host = document.getElementById('edgetabs-plus-host');
                     
-                    // Start by pausing transitions to prevent visual glitches
-                    document.documentElement.classList.add('theme-transitioning');
-                    
-                    // Wait for a frame to ensure transitions are paused
-                    requestAnimationFrame(() => {
-                        // Apply theme with transition
-                        document.documentElement.classList.toggle('dark-theme', message.isDark);
-                        document.body.classList.toggle('dark-theme', message.isDark);
+                    if (host) {
+                        // Add transitioning class to prevent flicker
+                        host.classList.add('theme-transitioning');
                         
-                        // Store theme state locally for quick access
-                        window.EdgeTabsPlus.currentTheme = message.isDark ? 'dark' : 'light';
+                        // Update theme attribute
+                        host.setAttribute('theme', message.theme);
                         
-                        // Re-enable transitions after a short delay
+                        // Store theme state
+                        window.EdgeTabsPlus.currentTheme = message.theme;
+                        
+                        // Remove transitioning class after animation
                         setTimeout(() => {
-                            document.documentElement.classList.remove('theme-transitioning');
+                            host.classList.remove('theme-transitioning');
                             
-                            // Force a repaint of the tab strip to apply theme properly
-                            const tabStrip = document.getElementById('edgetabs-plus-strip');
-                            if (tabStrip) {
-                                tabStrip.style.display = tabStrip.style.display;
-                                // Force style recalculation
-                                void tabStrip.offsetHeight;
+                            // Force style recalculation for shadow DOM
+                            if (host.shadowRoot) {
+                                void host.shadowRoot.querySelector('#edgetabs-plus-strip').offsetHeight;
                             }
-                        }, 50);
+                        }, 300);
                         
-                        // Notify user of theme change via logger
-                        logger.addLog(`Theme updated to ${message.isDark ? 'dark' : 'light'} mode`);
-                    });
+                        logger.addLog(`Theme updated to ${message.theme} mode`);
+                        
+                        // Reinject styles to ensure proper theme application
+                        EdgeTabsPlus.uiComponents.injectStyles();
+                    } else {
+                        logger.error('Tab strip host element not found');
+                    }
                     
-                    // Send confirmation back
+                    // Send confirmation
                     if (sendResponse) {
                         sendResponse({ success: true });
                     }

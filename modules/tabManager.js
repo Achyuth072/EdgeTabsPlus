@@ -35,15 +35,40 @@
         async renderTabs(tabs) {
             const tabWidth = this.calculateTabWidth(tabs.length);
             const tabsList = EdgeTabsPlus.uiComponents.tabsList;
+            const fragment = document.createDocumentFragment();
             
-            tabsList.innerHTML = '';
+            // Create template once
+            const template = document.createElement('template');
+            template.innerHTML = `
+                <li class="tab-item">
+                    <div class="tab-content">
+                        <div class="tab-info">
+                            <img class="tab-favicon" width="16" height="16" decoding="sync">
+                            <span class="tab-title"></span>
+                        </div>
+                        <div class="close-button-container">
+                            <button class="close-tab" aria-label="Close tab" type="button">×</button>
+                        </div>
+                    </div>
+                </li>
+            `.trim();
             
-            // Process tabs sequentially to maintain order
+            // Clear existing tabs
+            while (tabsList.firstChild) {
+                tabsList.removeChild(tabsList.firstChild);
+            }
+            
+            // Process tabs sequentially
             for (const tab of tabs) {
-                const tabItem = document.createElement('li');
-                tabItem.className = 'tab-item';
+                // Clone template for each tab
+                const tabItem = template.content.cloneNode(true).firstElementChild;
+                const favicon = tabItem.querySelector('.tab-favicon');
+                const titleSpan = tabItem.querySelector('.tab-title');
+                
+                // Setup tab item
                 tabItem.dataset.tabId = tab.id;
                 
+                // Set width class
                 if (tabs.length === 1) {
                     tabItem.classList.add('single-tab');
                 } else if (tabs.length >= 5) {
@@ -52,83 +77,38 @@
                     tabItem.style.setProperty('--tab-width', `${tabWidth}px`);
                 }
                 
-                tabItem.style.minHeight = '40px';
+                // Clean and set title
+                const cleanTitle = tab.title
+                    ?.replace(/ at DuckDuckGo$/i, '')
+                    ?.replace(/ - DuckDuckGo$/i, '')
+                    ?.split(' - ')[0]
+                    ?.trim() || 'New Tab';
+                titleSpan.textContent = cleanTitle;
                 
-                // Create and style favicon image
-                const favicon = new Image();
-                favicon.style.width = '20px';
-                favicon.style.height = '20px';
-                favicon.style.marginRight = '8px';
-                favicon.decoding = 'sync';
-
-                // Load favicon using faviconHandler
+                // Load favicon
                 try {
-                    const faviconUrl = await EdgeTabsPlus.faviconHandler.loadFavicon(tab);
-                    EdgeTabsPlus.logger.addLog(`Loaded favicon for tab ${tab.id}: ${faviconUrl}`);
-                    favicon.src = faviconUrl;
+                    favicon.src = await EdgeTabsPlus.faviconHandler.loadFavicon(tab);
+                    EdgeTabsPlus.logger.addLog(`Loaded favicon for tab ${tab.id}`);
                 } catch (error) {
-                    EdgeTabsPlus.logger.error(`Failed to load favicon for tab ${tab.id}: ${error.message}`);
+                    EdgeTabsPlus.logger.error(`Failed to load favicon for tab ${tab.id}`);
                     favicon.src = EdgeTabsPlus.faviconHandler.getDefaultIcon();
                 }
-
-                // Title handling
-                const titleSpan = document.createElement('span');
-                titleSpan.style.overflow = 'hidden';
-                titleSpan.style.textOverflow = 'ellipsis';
-                titleSpan.style.whiteSpace = 'nowrap';
-                titleSpan.style.flexGrow = '1';
                 
-                // Enhanced title cleaning
-                let cleanTitle = tab.title;
-                cleanTitle = cleanTitle
-                    .replace(/ at DuckDuckGo$/i, '')
-                    .replace(/ - DuckDuckGo$/i, '')
-                    .split(' - ')[0]
-                    .trim();
-                    
-                titleSpan.textContent = cleanTitle || 'New Tab';
-
-                // Assemble tab item
-                tabItem.appendChild(favicon);
-                
-                const titleContainer = document.createElement('div');
-                titleContainer.style.flex = '1';
-                titleContainer.style.minWidth = '0';
-                titleContainer.style.overflow = 'hidden';
-                titleContainer.appendChild(titleSpan);
-                
-                tabItem.appendChild(titleContainer);
-                
-                const closeButton = document.createElement('span');
-                closeButton.innerHTML = '×';
-                closeButton.className = 'close-tab';
-                closeButton.style.marginLeft = '5px';
-                closeButton.onclick = (e) => {
-                    e.stopPropagation();
-                    chrome.runtime.sendMessage({ action: 'closeTab', tabId: tab.id });
-                };
-                
-                tabItem.onclick = () => this.handleTabClick(tab);
-                
+                // Set active state
                 if (tab.active) {
                     tabItem.classList.add('active');
                 }
                 
-                tabItem.appendChild(closeButton);
-                tabsList.appendChild(tabItem);
-            }
-            
-            this.updateMinimalTabs();
-            this.updateScrollIndicators();
-        },
-
-        handleTabClick(tab) {
-            const tabId = tab.id;
-            
-            chrome.runtime.sendMessage({ 
-                action: 'activateTab', 
-                tabId: tabId 
-            });
+                    // Add to fragment
+                    fragment.appendChild(tabItem);
+                }
+    
+                // Add all tabs to DOM at once
+                tabsList.appendChild(fragment);
+                
+                // Update UI state
+                this.updateMinimalTabs();
+                this.updateScrollIndicators();
         },
 
         updateScrollIndicators() {
@@ -158,6 +138,7 @@
         },
 
         setupMessageListeners() {
+            // Setup message listener for tab updates
             chrome.runtime.onMessage.addListener((message) => {
                 if (message.action === 'tabsUpdated' && message.tabs) {
                     const newState = JSON.stringify(message.tabs);
@@ -166,6 +147,31 @@
                         this.renderTabs(message.tabs);
                     }
                 }
+            });
+
+            // Setup event delegation for tab interactions
+            EdgeTabsPlus.uiComponents.tabsList.addEventListener('click', (e) => {
+                const tabItem = e.target.closest('.tab-item');
+                if (!tabItem) return;
+
+                const tabId = parseInt(tabItem.dataset.tabId, 10);
+                if (!tabId) return;
+
+                // Handle close button clicks
+                if (e.target.closest('.close-tab')) {
+                    e.stopPropagation();
+                    chrome.runtime.sendMessage({
+                        action: 'closeTab',
+                        tabId: tabId
+                    });
+                    return;
+                }
+
+                // Handle tab activation
+                chrome.runtime.sendMessage({
+                    action: 'activateTab',
+                    tabId: tabId
+                });
             });
         },
 

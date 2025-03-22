@@ -3,15 +3,78 @@
 
     EdgeTabsPlus.styles = {
         init() {
-            // Critical: Insert theme protection style first, but make it less aggressive
-            this.injectThemeProtection();
-            this.injectBaseStyles();
-            this.injectTabWidthStyles();
-            this.injectTabStateStyles();
-            this.injectScrollingStyles(); // Add scrolling specific styles
-            this.injectAdditionalStyles();
-            this.injectColorSchemeControl();
+            // Store styles to be injected into shadow DOM
+            this.styles = {
+                base: this.getBaseStyles(),
+                tabWidth: this.getTabWidthStyles(),
+                tabState: this.getTabStateStyles(),
+                scrolling: this.getScrollingStyles(),
+                additional: this.getAdditionalStyles(),
+                colorScheme: this.getColorSchemeStyles()
+            };
+            
+            // Add styles to document for theme variables
+            this.injectThemeVariables();
             return this;
+        },
+
+        // Method to get complete styles for shadow DOM
+        getStyles() {
+            return `
+                ${this.styles.base}
+                ${this.styles.tabWidth}
+                ${this.styles.tabState}
+                ${this.styles.scrolling}
+                ${this.styles.additional}
+                ${this.styles.colorScheme}
+            `;
+        },
+
+        // Only inject theme variables at document level
+        injectThemeVariables() {
+            const style = document.createElement('style');
+            style.textContent = `
+                :root {
+                    --strip-bg: #f0f2f4;
+                    --strip-border: rgba(0, 0, 0, 0.1);
+                    --strip-shadow: rgba(0, 0, 0, 0.05);
+                    --tab-bg: linear-gradient(to bottom, #ffffff, #f8f9fa);
+                    --tab-border: rgba(0, 0, 0, 0.1);
+                    --tab-shadow: rgba(0, 0, 0, 0.05);
+                    --tab-active-bg: #ffffff;
+                    --tab-active-border: rgba(0, 0, 0, 0.2);
+                    --tab-active-shadow: rgba(0, 0, 0, 0.1);
+                    --tab-active-indicator: #0078D4;
+                    --tab-text: #000000;
+                    --tab-hover-bg: rgba(0, 0, 0, 0.05);
+                    --add-btn-bg: #f8f9fa;
+                    --add-btn-border: #ddd;
+                    --add-btn-color: #666;
+                    --add-btn-hover-bg: #fff;
+                    --add-btn-hover-color: #000;
+                }
+
+                :root.dark-theme {
+                    --strip-bg: #202124;
+                    --strip-border: rgba(255, 255, 255, 0.1);
+                    --strip-shadow: rgba(0, 0, 0, 0.2);
+                    --tab-bg: linear-gradient(to bottom, #292a2d, #202124);
+                    --tab-border: rgba(255, 255, 255, 0.1);
+                    --tab-shadow: rgba(0, 0, 0, 0.2);
+                    --tab-active-bg: #3c4043;
+                    --tab-active-border: rgba(255, 255, 255, 0.2);
+                    --tab-active-shadow: rgba(0, 0, 0, 0.3);
+                    --tab-active-indicator: #8ab4f8;
+                    --tab-text: #e8eaed;
+                    --tab-hover-bg: rgba(255, 255, 255, 0.05);
+                    --add-btn-bg: #292a2d;
+                    --add-btn-border: #5f6368;
+                    --add-btn-color: #e8eaed;
+                    --add-btn-hover-bg: #3c4043;
+                    --add-btn-hover-color: #ffffff;
+                }
+            `;
+            document.head.appendChild(style);
         },
 
         // New method to protect against browser theme interference (less aggressive)
@@ -45,62 +108,79 @@
             }
         },
 
-        injectBaseStyles() {
-            const style = document.createElement('style');
-            style.textContent = `
+        getBaseStyles() {
+            return `
+                :host {
+                    display: block;
+                }
+                
+                *, *::before, *::after {
+                    box-sizing: border-box;
+                }
+                
                 #edgetabs-plus-strip,
                 #edgetabs-plus-strip *:not(.close-tab):not(#add-tab) {
                     pointer-events: auto;
                     touch-action: auto;
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif !important;
-                    font-size: 14px !important;
-                    font-weight: normal !important;
-                    letter-spacing: normal !important;
-                    text-transform: none !important;
-                    box-sizing: border-box !important;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+                    font-size: 14px;
+                    font-weight: normal;
+                    letter-spacing: normal;
+                    text-transform: none;
                 }
                 
                 #edgetabs-plus-strip {
-                    min-height: 40px !important;
-                    padding: 4px 8px !important;
-                    transition: opacity 0.3s ease, transform 0.3s ease !important;
-                    opacity: 1 !important;
-                    transform: translateY(0) !important;
-                    z-index: 9999999 !important;
-                    display: flex !important;
+                    min-height: 40px;
+                    padding: 4px 8px;
+                    transition: opacity 0.3s ease, transform 0.3s ease;
+                    opacity: 1;
+                    transform: translateY(0);
+                    z-index: 9999999;
+                    display: flex;
+                    position: fixed;
+                    bottom: var(--strip-bottom-offset, 0);
+                    left: 0;
+                    width: 100%;
+                    background-color: var(--strip-bg);
+                    border-top: 1px solid var(--strip-border);
+                    box-shadow: 0 -2px 4px var(--strip-shadow);
+                }
+
+                :host([hidden]) #edgetabs-plus-strip {
+                    display: none;
                 }
 
                 #edgetabs-plus-strip.transitioning {
-                    transition: opacity 0.3s ease, transform 0.3s ease, display 0s linear 0.3s !important;
+                    transition: opacity 0.3s ease, transform 0.3s ease, display 0s linear 0.3s;
                 }
 
                 #edgetabs-plus-strip:not(.visible) {
-                    opacity: 0 !important;
-                    transform: translateY(100%) !important;
+                    opacity: 0;
+                    transform: translateY(100%);
                 }
 
                 /* Auto-hide behavior */
                 #edgetabs-plus-strip {
-                    transition: opacity 0.3s ease, transform 0.3s ease !important;
-                    transform: translateY(0) !important;
-                    opacity: 1 !important;
-                    will-change: transform, opacity !important;
+                    transition: opacity 0.3s ease, transform 0.3s ease;
+                    transform: translateY(0);
+                    opacity: 1;
+                    will-change: transform, opacity;
                 }
 
                 #edgetabs-plus-strip.hidden {
-                    opacity: 0 !important;
-                    transform: translateY(100%) !important;
-                    pointer-events: none !important;
+                    opacity: 0;
+                    transform: translateY(100%);
+                    pointer-events: none;
                 }
 
                 /* Disable transitions when auto-hide is disabled */
-                #edgetabs-plus-strip:not(.auto-hide-enabled) {
-                    transform: translateY(0) !important;
-                    opacity: 1 !important;
+                :host([no-auto-hide]) #edgetabs-plus-strip {
+                    transform: translateY(0);
+                    opacity: 1;
                 }
                 
-                /* Improved tabs list base styles */
-                #edgetabs-plus-strip ul {
+                /* Tabs list and scrolling */
+                .tabs-list {
                     pointer-events: auto;
                     touch-action: pan-x;
                     overflow-x: auto;
@@ -125,12 +205,12 @@
                 }
 
                 /* Add grabbing cursor when actively scrolling */
-                #edgetabs-plus-strip ul.grabbing {
+                .tabs-list.grabbing {
                     cursor: grabbing;
                 }
 
                 /* Hide scrollbars but keep functionality */
-                #edgetabs-plus-strip ul::-webkit-scrollbar {
+                .tabs-list::-webkit-scrollbar {
                     display: none;
                 }
 
@@ -139,10 +219,10 @@
                     display: flex;
                     align-items: center;
                     margin-left: 8px;
-                    border-left: 1px solid #ddd;
+                    border-left: 1px solid var(--tab-border);
                 }
 
-                /* Add tab button */
+                /* Add tab button with theme variables */
                 #add-tab {
                     display: flex;
                     align-items: center;
@@ -150,71 +230,189 @@
                     margin-left: 8px;
                     width: 28px;
                     height: 28px;
-                    background: #f8f9fa;
-                    border: 1px solid #ddd;
+                    background: var(--add-btn-bg);
+                    border: 1px solid var(--add-btn-border);
                     border-radius: 4px;
                     cursor: pointer;
-                    color: #666;
+                    color: var(--add-btn-color);
                     font-size: 18px;
                     line-height: 1;
+                    transition: all 0.2s ease;
                 }
 
                 #add-tab:hover {
-                    background: #fff;
-                    color: #000;
+                    background: var(--add-btn-hover-bg);
+                    color: var(--add-btn-hover-color);
                 }
 
+                #add-tab:active {
+                    transform: scale(0.95);
+                }
+
+                /* Tab item styling */
                 .tab-item {
-                    position: relative !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    padding: 8px 28px 8px 4px !important;
-                    gap: 4px !important;
-                    overflow: hidden !important;
-                    border-radius: 8px !important;
-                    justify-content: space-between !important;
-                    transition: width 0.3s ease-out, transform 0.2s ease-out !important;
-                    width: var(--tab-width, 180px) !important;
-                    flex: 0 0 var(--tab-width, 180px) !important;
+                    position: relative;
+                    height: 38px; /* Increased from 32px */
+                    min-height: 38px; /* Increased from 32px */
+                    margin: 1px 0; /* Center tabs vertically */
+                    border-radius: 8px;
+                    background: var(--tab-bg);
+                    border: 1px solid var(--tab-border);
+                    box-shadow: 0 1px 2px var(--tab-shadow);
+                    color: var(--tab-text);
+                    width: var(--tab-width, 180px);
+                    flex: 0 0 var(--tab-width, 180px);
+                    transition: all 0.2s ease-out;
+                    overflow: hidden;
                 }
 
-                .close-tab {
-                    position: absolute !important;
-                    right: 1px !important;
-                    top: 50% !important;
-                    transform: translateY(-50%) !important;
-                    width: 30px !important;
-                    height: 30px !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    background: transparent !important;
-                    border-radius: 50% !important;
-                    font-size: 24px !important;
-                    font-weight: 700 !important;
-                    line-height: 1 !important;
-                    color: #666 !important;
-                    z-index: 1 !important;
-                    cursor: pointer !important;
-                    -webkit-tap-highlight-color: transparent !important;
+                /* Adjust tabstrip padding to accommodate taller tabs */
+                #edgetabs-plus-strip {
+                    padding: 2px 8px; /* Reduced from 4px to maintain overall height */
+                }
+    
+                .tab-content {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    height: 100%;
+                    padding: 0 6px 0 10px; /* Adjusted padding for better spacing */
+                    gap: 8px;
+                }
+    
+                .tab-info {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px; /* Increased from 8px */
+                    min-width: 0;
+                    flex: 1;
+                    height: 100%;
                 }
 
-                .close-tab:hover {
-                    background-color: rgba(0, 0, 0, 0.05) !important;
-                    border-radius: 50% !important;
-                    transition: background-color 0.2s ease !important;
+                /* Adjust text size for better readability */
+                .tab-title {
+                    font-size: 13px; /* Increased from 12px */
+                    line-height: 38px; /* Match tab height */
+                    font-weight: 400;
+                    letter-spacing: 0.01em;
                 }
 
-                /* Add active state for better touch feedback */
-                .close-tab:active {
-                    background-color: rgba(0, 0, 0, 0.1) !important;
-                    transform: translateY(-50%) scale(0.95) !important;
+                /* Mobile optimizations */
+                @media (pointer: coarse) {
+                    .tab-content {
+                        padding: 0 8px 0 12px; /* Larger padding for touch */
+                    }
+
+                    .tab-info {
+                        gap: 12px; /* Larger gap for touch */
+                    }
                 }
 
-                /* Add feedback for tab clicks */
+                /* Tab hover effects */
+                .tab-item:hover {
+                    background: var(--tab-hover-bg);
+                    transform: translateY(-1px);
+                    box-shadow: 0 2px 4px var(--tab-shadow);
+                }
+
                 .tab-item:active {
-                    transform: scale(0.98) !important;
-                    transition: transform 0.1s ease-out !important;
+                    transform: scale(0.98);
+                }
+
+                /* Close button container */
+                .close-button-container {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 24px;
+                    height: 24px;
+                }
+    
+                /* Close button styling */
+                .close-tab {
+                    width: 20px;
+                    height: 20px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: transparent;
+                    border: none;
+                    border-radius: 50%;
+                    padding: 0;
+                    margin: 0;
+                    font-size: 14px;
+                    font-weight: 700;
+                    line-height: 1;
+                    color: var(--tab-text);
+                    opacity: 0.7;
+                    cursor: pointer;
+                    -webkit-tap-highlight-color: transparent;
+                    transition: all 0.2s ease;
+                }
+    
+                .close-tab:hover {
+                    opacity: 1;
+                    background-color: var(--tab-hover-bg);
+                }
+    
+                /* Touch feedback */
+                .close-tab:active {
+                    background-color: var(--tab-hover-bg);
+                    transform: scale(0.95);
+                }
+    
+                /* Ensure text doesn't overflow */
+                .tab-title {
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    font-size: 12px;
+                }
+    
+                /* Favicon sizing */
+                .tab-favicon {
+                    flex-shrink: 0;
+                }
+
+                /* Larger touch target for mobile */
+                @media (pointer: coarse) {
+                    .close-tab {
+                        width: 24px;
+                        height: 24px;
+                    }
+
+                    .close-tab::after {
+                        content: '';
+                        position: absolute;
+                        top: -8px;
+                        right: -8px;
+                        bottom: -8px;
+                        left: -8px;
+                    }
+                }
+
+                .tab-item:active {
+                    transform: scale(0.98);
+                }
+
+                /* Active tab styling */
+                .tab-item.active {
+                    background: var(--tab-active-bg);
+                    border-color: var(--tab-active-border);
+                    box-shadow: 0 2px 6px var(--tab-active-shadow);
+                    transform: translateY(-1px) scale(1.02);
+                    z-index: 2;
+                }
+
+                .tab-item.active::before {
+                    content: '';
+                    position: absolute;
+                    top: -1px;
+                    left: -1px;
+                    right: -1px;
+                    height: 2px;
+                    background-color: var(--tab-active-indicator);
+                    border-radius: 2px 2px 0 0;
                 }
 
                 #log-overlay {
@@ -264,64 +462,112 @@
             document.head.appendChild(style);
         },
 
-        injectTabWidthStyles() {
-            const style = document.createElement('style');
-            style.textContent = `
+        getTabWidthStyles() {
+            return `
+                /* Base tab dimensions */
                 .tab-item {
-                    width: var(--tab-width, 180px) !important;
-                    min-width: auto !important;
-                    max-width: none !important;
-                    flex: 0 0 var(--tab-width, 180px) !important;
-                    transition: width 0.3s ease-out, flex-basis 0.3s ease-out !important;
+                    width: var(--tab-width, 180px);
+                    min-width: auto;
+                    max-width: none;
+                    flex: 0 0 var(--tab-width, 180px);
+                    transition: width 0.3s ease-out, flex-basis 0.3s ease-out;
                 }
 
+                /* Minimal tab state */
                 .tab-item.minimal {
-                    width: 90px !important;
-                    flex: 0 0 90px !important;
+                    width: 90px;
+                    flex: 0 0 90px;
                 }
                 
                 .tab-item.minimal div:not(.close-tab) {
-                    max-width: 24px !important; /* Only show favicon */
+                    max-width: 24px; /* Only show favicon */
                 }
                 
                 .tab-item.minimal span:not(.close-tab) {
-                    display: none !important; /* Hide text completely */
+                    display: none; /* Hide text completely */
                 }
             `;
-            document.head.appendChild(style);
         },
 
-        injectTabStateStyles() {
-            const style = document.createElement('style');
-            style.textContent = `
+        getTabStateStyles() {
+            return `
+                /* Single tab state */
                 .tab-item.single-tab {
-                    min-width: 180px !important;
-                    width: 180px !important;
-                    max-width: 180px !important;
-                    flex-basis: 180px !important;
+                    min-width: 180px;
+                    width: 180px;
+                    max-width: 180px;
+                    flex-basis: 180px;
                 }
 
                 .tab-item.single-tab span:not(.close-tab) {
-                    opacity: 1 !important;
-                    max-width: 140px !important;
+                    opacity: 1;
+                    max-width: 140px;
                 }
 
+                /* Regular tab states */
                 .tab-item:not(.minimal):not(.single-tab) {
-                    transition: width 0.3s ease-out !important;
+                    transition: width 0.3s ease-out;
                 }
 
-                .tab-item.minimal span:not(.close-tab) {
-                    max-width: 50px !important;
-                    opacity: 0.85 !important;
+                /* Minimal state styles */
+                .tab-item.minimal {
+                    width: 90px;
+                    flex: 0 0 90px;
+                }
+
+                .tab-item.minimal .tab-info {
+                    justify-content: center;
+                }
+
+                .tab-item.minimal .tab-title {
+                    display: none;
+                }
+
+                .tab-item.minimal .tab-favicon {
+                    margin: 0;
+                    width: 24px; /* Larger favicon for minimal state */
+                    height: 24px;
+                }
+
+                /* Single tab state */
+                .tab-item.single-tab {
+                    width: 200px; /* Increased from 180px */
+                    flex: 0 0 200px;
+                }
+
+                .tab-item.single-tab .tab-info {
+                    flex: 1;
+                }
+
+                .tab-item.single-tab .tab-title {
+                    max-width: none;
+                    opacity: 1;
+                }
+
+                /* Active tab adjustments */
+                .tab-item.active {
+                    height: 40px; /* Slightly taller than regular tabs */
+                    margin: 0; /* Remove margin to prevent jumping */
+                    transform: translateY(-1px); /* Lift slightly */
+                }
+
+                .tab-item.active .tab-title {
+                    opacity: 1;
+                    font-weight: 500;
+                }
+
+                /* Touch device optimizations */
+                @media (pointer: coarse) {
+                    .tab-item.minimal .tab-favicon {
+                        width: 28px; /* Even larger for touch devices */
+                        height: 28px;
+                    }
                 }
             `;
-            document.head.appendChild(style);
         },
         
-        injectScrollingStyles() {
-            const style = document.createElement('style');
-            style.id = 'edgetabs-scrolling-styles';
-            style.textContent = `
+        getScrollingStyles() {
+            return `
                 /* Enhanced scrolling and touch interaction */
                 .tabs-list {
                     scroll-snap-type: x proximity;
@@ -332,7 +578,7 @@
                 }
                 
                 .tabs-list.grabbing {
-                    cursor: grabbing !important;
+                    cursor: grabbing;
                 }
                 
                 /* Scroll snap alignment */
@@ -355,12 +601,23 @@
                 
                 /* Active tab styling enhancements */
                 .tab-item.active {
-                    transform: translateY(-2px) scale(1.03) !important;
+                    transform: translateY(-2px) scale(1.03);
                     transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
-                    z-index: 10 !important;
+                    z-index: 10;
+                }
+
+                /* Performance optimizations */
+                .tabs-list, .tab-item {
+                    will-change: transform;
+                    backface-visibility: hidden;
+                    -webkit-backface-visibility: hidden;
                 }
                 
-                /* Scroll progress indicators */
+                /* Scroll indicators with smooth transitions */
+                .tabs-list {
+                    position: relative;
+                }
+
                 .tabs-list::before,
                 .tabs-list::after {
                     content: '';
@@ -371,19 +628,17 @@
                     opacity: 0;
                     transition: opacity 0.3s ease;
                     pointer-events: none;
-                    z-index: 10;
+                    z-index: 2;
                 }
                 
                 .tabs-list::before {
                     left: 0;
                     background: linear-gradient(to right, var(--strip-bg), transparent);
-                    opacity: 0;
                 }
                 
                 .tabs-list::after {
                     right: 0;
                     background: linear-gradient(to left, var(--strip-bg), transparent);
-                    opacity: 0;
                 }
                 
                 .tabs-list.scroll-left::before {
@@ -394,38 +649,37 @@
                     opacity: 0.8;
                 }
                 
-                /* Smooth animation for all transitions */
+                /* Motion preferences and animations */
                 @media (prefers-reduced-motion: no-preference) {
                     .tab-item, .tabs-list {
                         transition-duration: 0.25s;
                         transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
                     }
                 }
-                
-                /* Add subtle bounce effect when reaching scroll limits */
-                .tabs-list {
-                    overscroll-behavior-x: contain;
+
+                @media (prefers-reduced-motion: reduce) {
+                    .tab-item, .tabs-list {
+                        transition-duration: 0.1s;
+                    }
                 }
                 
-                /* Enhanced touch feedback */
+                /* Touch optimizations */
                 .tab-item {
-                    -webkit-tap-highlight-color: transparent !important;
-                    touch-action: pan-x !important;
+                    -webkit-tap-highlight-color: transparent;
+                    touch-action: pan-x;
                 }
                 
-                /* Tab interaction feedback */
+                /* Interactive states */
                 .tab-item:active:not(.active) {
                     opacity: 0.85;
                     transform: scale(0.98);
-                    transition: transform 0.1s ease-out, opacity 0.1s ease-out;
                 }
                 
-                /* Active tab feedback */
                 .tab-item.active:active {
-                    transform: translateY(-1px) scale(0.99) !important;
+                    transform: translateY(-1px) scale(0.99);
                 }
                 
-                /* Edge bounce effect for mobile */
+                /* Mobile optimizations */
                 @supports (-webkit-overflow-scrolling: touch) {
                     .tabs-list {
                         padding: 0 16px;
@@ -433,47 +687,45 @@
                     
                     .tabs-list::before,
                     .tabs-list::after {
-                        width: 30px; /* Wider gradient on mobile */
+                        width: 30px;
                     }
                     
-                    /* Increase touch targets for mobile */
                     .close-tab {
-                        width: 34px !important;
-                        height: 34px !important;
+                        width: 34px;
+                        height: 34px;
+                        min-width: 44px; /* Ensure minimum touch target size */
+                        min-height: 44px;
                     }
                     
-                    /* More pronounced active states for touch */
                     .tab-item:active {
                         opacity: 0.8;
                     }
+
+                    /* Prevent rubber-banding on iOS */
+                    .tabs-list {
+                        overscroll-behavior-x: none;
+                        -webkit-overflow-scrolling: touch;
+                    }
+                }
+
+                /* High contrast mode support */
+                @media (forced-colors: active) {
+                    .tab-item {
+                        border: 1px solid ButtonText;
+                    }
+                    
+                    .tab-item.active {
+                        border: 2px solid Highlight;
+                    }
                 }
             `;
-            document.head.appendChild(style);
-            
-            // Also add event listener to show scroll indicators
-            setTimeout(() => {
-                const tabsList = document.getElementById('tabs-list');
-                if (tabsList) {
-                    tabsList.addEventListener('scroll', () => {
-                        const hasLeftScroll = tabsList.scrollLeft > 10;
-                        const hasRightScroll = tabsList.scrollLeft < (tabsList.scrollWidth - tabsList.clientWidth - 10);
-                        
-                        tabsList.classList.toggle('scroll-left', hasLeftScroll);
-                        tabsList.classList.toggle('scroll-right', hasRightScroll);
-                    }, { passive: true });
-                    
-                    // Trigger initial check
-                    const event = new Event('scroll');
-                    tabsList.dispatchEvent(event);
-                }
-            }, 500);
         },
 
-        injectAdditionalStyles() {
-            const style = document.createElement('style');
-            style.textContent = `
-                /* Define theme variables */
-                :root {
+        getAdditionalStyles() {
+            return `
+                /* Host theme handling */
+                :host {
+                    color-scheme: light dark;
                     --strip-bg: #f0f2f4;
                     --strip-border: rgba(0, 0, 0, 0.1);
                     --strip-shadow: rgba(0, 0, 0, 0.05);
@@ -491,13 +743,10 @@
                     --add-btn-color: #666;
                     --add-btn-hover-bg: #fff;
                     --add-btn-hover-color: #000;
-                    transition: all 0.3s ease;
                 }
 
-                /* Dark theme variables - make more specific for better override */
-                html.dark-theme:not(.light-theme), 
-                body.dark-theme:not(.light-theme),
-                .dark-theme:root {
+                /* Dark theme via host attribute */
+                :host([theme="dark"]) {
                     --strip-bg: #202124;
                     --strip-border: rgba(255, 255, 255, 0.1);
                     --strip-shadow: rgba(0, 0, 0, 0.2);
@@ -515,6 +764,19 @@
                     --add-btn-color: #e8eaed;
                     --add-btn-hover-bg: #3c4043;
                     --add-btn-hover-color: #ffffff;
+                }
+
+                /* Theme transitions */
+                *, *::before, *::after {
+                    transition: background-color 0.3s ease,
+                              border-color 0.3s ease,
+                              box-shadow 0.3s ease,
+                              color 0.3s ease;
+                }
+
+                /* Disable transitions during theme changes */
+                :host(.theme-transitioning) * {
+                    transition: none !important;
                 }
 
                 /* Apply theme variables to tab strip */
@@ -599,47 +861,61 @@
             document.head.appendChild(style);
         },
         
-        injectColorSchemeControl() {
-            const style = document.createElement('style');
-            style.id = 'edgetabs-color-scheme-control';
-            style.textContent = `
-                /* Direct selectors for tab strip elements with !important */
-                #edgetabs-plus-strip {
-                    background-color: var(--strip-bg) !important;
-                    color: var(--tab-text) !important;
+        getColorSchemeStyles() {
+            return `
+                /* Adaptive color scheme based on host attribute */
+                :host {
+                    color-scheme: light dark;
                 }
-                
-                .tab-item {
-                    background: var(--tab-bg) !important;
-                    color: var(--tab-text) !important;
-                    border-color: var(--tab-border) !important;
+
+                /* Auto dark mode via system preference */
+                @media (prefers-color-scheme: dark) {
+                    :host(:not([theme="light"])) {
+                        --strip-bg: #202124;
+                        --strip-border: rgba(255, 255, 255, 0.1);
+                        --strip-shadow: rgba(0, 0, 0, 0.2);
+                        --tab-bg: linear-gradient(to bottom, #292a2d, #202124);
+                        --tab-border: rgba(255, 255, 255, 0.1);
+                        --tab-shadow: rgba(0, 0, 0, 0.2);
+                        --tab-active-bg: #3c4043;
+                        --tab-active-border: rgba(255, 255, 255, 0.2);
+                        --tab-active-shadow: rgba(0, 0, 0, 0.3);
+                        --tab-active-indicator: #8ab4f8;
+                        --tab-text: #e8eaed;
+                        --tab-hover-bg: rgba(255, 255, 255, 0.05);
+                    }
                 }
-                
-                /* Prevent theme transitioning issues */
-                .theme-transitioning {
-                    transition: none !important;
-                }
-                
-                .theme-transitioning * {
-                    transition: none !important;
-                }
-                
-                /* Make sure any tab within light or dark theme is properly colored */
-                html.dark-theme .tab-item,
-                body.dark-theme .tab-item {
-                    --tab-bg: linear-gradient(to bottom, #292a2d, #202124);
-                    --tab-text: #e8eaed;
-                    background: var(--tab-bg) !important;
-                }
-                
-                html.light-theme .tab-item,
-                body.light-theme .tab-item {
+
+                /* Forced light mode */
+                :host([theme="light"]) {
+                    --strip-bg: #f0f2f4;
+                    --strip-border: rgba(0, 0, 0, 0.1);
+                    --strip-shadow: rgba(0, 0, 0, 0.05);
                     --tab-bg: linear-gradient(to bottom, #ffffff, #f8f9fa);
+                    --tab-border: rgba(0, 0, 0, 0.1);
+                    --tab-shadow: rgba(0, 0, 0, 0.05);
                     --tab-text: #000000;
-                    background: var(--tab-bg) !important;
+                }
+
+                /* High contrast mode support */
+                @media (forced-colors: active) {
+                    :host {
+                        forced-colors: none;
+                    }
+
+                    .tab-item {
+                        border: solid 1px ButtonText;
+                    }
+
+                    .tab-item.active {
+                        border: solid 2px Highlight;
+                    }
+
+                    .close-tab {
+                        color: ButtonText;
+                    }
                 }
             `;
-            document.head.appendChild(style);
         }
     };
 })();
