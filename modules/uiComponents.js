@@ -8,19 +8,104 @@
         addButtonContainer: null,
 
         init() {
-            this.strip = this.createTabStrip();
+            const { host, strip, shadow } = this.createTabStrip();
+            this.host = host;
+            this.strip = strip;
+            this.shadow = shadow;
+            
+            // Create and inject styles into shadow DOM
+            this.injectStyles();
+            
             this.tabsList = this.createTabsList();
             this.addButtonContainer = this.createAddButtonContainer();
             this.addButton = this.createAddButton();
             this.setupStrip();
             
-            // Add additional check to ensure strip is visible
+            // Add additional check to ensure strip visibility
             this.ensureStripVisibility();
             
             return this;
         },
 
+        injectStyles() {
+            if (!this.shadow) return;
+
+            // Remove any existing styles
+            const existingStyle = this.shadow.querySelector('style');
+            if (existingStyle) {
+                existingStyle.remove();
+            }
+
+            const style = document.createElement('style');
+            
+            // Get all styles from EdgeTabsPlus.styles
+            style.textContent = EdgeTabsPlus.styles.getStyles();
+            
+            this.shadow.appendChild(style);
+
+            // Set up theme sync
+            this.setupThemeSync();
+        },
+
+        setupThemeSync() {
+            // Listen for theme changes from popup/menu
+            chrome.runtime.onMessage.addListener((message) => {
+                if (message.action === 'themeChanged') {
+                    this.host.setAttribute('theme', message.theme);
+                    // Add transitioning class
+                    this.host.classList.add('theme-transitioning');
+                    // Remove it after transition
+                    setTimeout(() => {
+                        this.host.classList.remove('theme-transitioning');
+                    }, 300);
+                }
+            });
+
+            // Watch for system theme changes
+            const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            darkModeMediaQuery.addEventListener('change', (e) => {
+                if (!this.host.hasAttribute('theme')) {
+                    // Only update if theme isn't explicitly set
+                    this.host.setAttribute('theme', e.matches ? 'dark' : 'light');
+                }
+            });
+
+            // Set initial theme
+            const shouldUseDark = darkModeMediaQuery.matches;
+            const savedTheme = localStorage.getItem('theme');
+            const theme = savedTheme || (shouldUseDark ? 'dark' : 'light');
+            this.host.setAttribute('theme', theme);
+        },
+        
+        setupThemeObserver() {
+            // Create an observer to watch for theme changes on document root
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.attributeName === 'class') {
+                        const isDark = document.documentElement.classList.contains('dark-theme');
+                        this.host.setAttribute('theme', isDark ? 'dark' : 'light');
+                    }
+                });
+            });
+            
+            observer.observe(document.documentElement, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
+            
+            // Set initial theme
+            const isDark = document.documentElement.classList.contains('dark-theme');
+            this.host.setAttribute('theme', isDark ? 'dark' : 'light');
+        },
+
         createTabStrip() {
+            const host = document.createElement('div');
+            host.id = 'edgetabs-plus-host';
+            
+            // Create shadow root with mode: open for debugging
+            const shadow = host.attachShadow({ mode: 'open' });
+            
+            // Create the strip container inside shadow DOM
             const strip = document.createElement('div');
             strip.id = 'edgetabs-plus-strip';
             strip.style.position = 'fixed';
@@ -28,7 +113,7 @@
             strip.style.left = '0';
             strip.style.width = '100%';
             strip.style.backgroundColor = EdgeTabsPlus.config.tabStrip.backgroundColor;
-            strip.style.zIndex = '2147483647'; // Maximum z-index value
+            strip.style.zIndex = '2147483647';
             strip.style.display = 'flex';
             strip.style.alignItems = 'center';
             strip.style.padding = '0 10px';
@@ -36,7 +121,11 @@
             strip.style.transition = `transform ${EdgeTabsPlus.config.scroll.transformDuration} ease-out`;
             strip.style.pointerEvents = 'none';
             strip.style.transform = 'translate3d(0,0,0)';
-            return strip;
+            
+            // Add strip to shadow root
+            shadow.appendChild(strip);
+            
+            return { host, strip, shadow };
         },
 
         createTabsList() {
@@ -86,33 +175,56 @@
             this.addButtonContainer.appendChild(this.addButton);
             this.strip.appendChild(this.tabsList);
             this.strip.appendChild(this.addButtonContainer);
-            document.body.appendChild(this.strip);
+            document.body.appendChild(this.host);
             
-            // Set additional properties to ensure visibility
+            // Set up event delegation in shadow root
+            this.shadow.addEventListener('click', (e) => {
+                const target = e.target;
+                
+                // Handle close button clicks
+                if (target.classList.contains('close-tab')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const tabId = target.closest('.tab-item').dataset.tabId;
+                    chrome.runtime.sendMessage({ action: 'closeTab', tabId });
+                }
+                
+                // Handle tab clicks
+                if (target.closest('.tab-item')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const tabId = target.closest('.tab-item').dataset.tabId;
+                    chrome.runtime.sendMessage({ action: 'activateTab', tabId });
+                }
+            });
+            
+            // Set visibility
             this.strip.style.visibility = 'visible';
             this.strip.classList.add('visible');
         },
         
-        // New method to ensure the strip is visible
+        // Method to ensure the strip is visible with shadow DOM support
         ensureStripVisibility() {
-            // Get the stored visibility state
             chrome.storage.sync.get(['showTabStrip'], (result) => {
                 const shouldShow = result.showTabStrip !== undefined ? result.showTabStrip : true;
                 
-                if (shouldShow && this.strip) {
+                if (shouldShow && this.host && this.strip) {
                     // Force display if it should be visible
                     this.strip.style.display = 'flex';
                     this.strip.style.visibility = 'visible';
                     this.strip.classList.add('visible');
                     
-                    // Additional check - if it's still not showing, try adding it to the body again
-                    if (!document.body.contains(this.strip)) {
-                        document.body.appendChild(this.strip);
-                        console.log('Re-added tab strip to body');
+                    // Check if host element is in document
+                    if (!document.body.contains(this.host)) {
+                        document.body.appendChild(this.host);
+                        console.log('Re-added tab strip host to document');
                     }
                     
                     // Force a layout recalculation
                     void this.strip.offsetHeight;
+                    
+                    // Ensure styles are applied in shadow DOM
+                    this.injectStyles();
                 }
                 
                 // Log the visibility status
@@ -121,6 +233,10 @@
                 } else {
                     console.log(`Tab strip visibility checked: ${shouldShow ? 'visible' : 'hidden'}`);
                 }
+                
+                // Update theme
+                const isDark = document.documentElement.classList.contains('dark-theme');
+                this.host.setAttribute('theme', isDark ? 'dark' : 'light');
             });
         }
     };
