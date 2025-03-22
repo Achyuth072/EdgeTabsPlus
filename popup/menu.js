@@ -98,10 +98,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Theme Management
     function setTheme(isDark) {
-        // Apply theme to both HTML and body elements to ensure complete styling
+        // Update local UI
         document.documentElement.classList.toggle('dark-theme', isDark);
         document.body.classList.toggle('dark-theme', isDark);
-        chrome.storage.sync.set({ isDarkMode: isDark });
+        
+        // Store theme preference
+        chrome.storage.sync.set({
+            isDarkMode: isDark,
+            theme: isDark ? 'dark' : 'light'
+        });
         
         // Update theme toggle icon with animation
         const themeIcon = themeToggle.querySelector('i');
@@ -112,7 +117,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => {
             themeIcon.classList.remove('rotate-out');
             themeIcon.classList.add('rotate-in');
-            // Remove animation classes after transition
             setTimeout(() => {
                 themeIcon.classList.remove('rotate-in');
             }, 300);
@@ -124,11 +128,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         themeToggle.appendChild(ripple);
         setTimeout(() => ripple.remove(), 1000);
         
-        // Broadcast theme change to all tabs via background script
-        chrome.runtime.sendMessage({
-            action: 'syncTheme',
-            isDark: isDark
+        // Notify all tabs of theme change
+        chrome.tabs.query({}, (tabs) => {
+            tabs.forEach(tab => {
+                chrome.tabs.sendMessage(tab.id, {
+                    action: 'themeChanged',
+                    theme: isDark ? 'dark' : 'light'
+                }).catch(err => {
+                    // Ignore errors for tabs that can't receive messages
+                    if (!err.message.includes('receiving end does not exist')) {
+                        console.error(`Failed to update theme in tab ${tab.id}:`, err);
+                    }
+                });
+            });
         });
+        
         console.log('Theme updated:', isDark ? 'dark' : 'light');
     }
 
