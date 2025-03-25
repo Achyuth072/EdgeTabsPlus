@@ -33,86 +33,108 @@
         },
 
         async renderTabs(tabs) {
-            const tabWidth = this.calculateTabWidth(tabs.length);
-            const tabsList = EdgeTabsPlus.uiComponents.tabsList;
-            const fragment = document.createDocumentFragment();
-            
-            // Create template once
-            const template = document.createElement('template');
-            template.innerHTML = `
-                <li class="tab-item">
-                    <div class="tab-content">
-                        <div class="tab-info">
-                            <img class="tab-favicon" width="16" height="16" decoding="sync">
-                            <span class="tab-title"></span>
+            try {
+                const tabWidth = this.calculateTabWidth(tabs.length);
+                const tabStrip = document.getElementById('edgetabs-plus-host');
+                if (!tabStrip || !tabStrip.shadowRoot) {
+                    EdgeTabsPlus.logger.error('Tab strip or shadow root not found');
+                    return;
+                }
+                
+                const tabsList = tabStrip.shadowRoot.getElementById('tabs-list');
+                if (!tabsList) {
+                    EdgeTabsPlus.logger.error('Tabs list not found in shadow DOM');
+                    return;
+                }
+
+                const fragment = document.createDocumentFragment();
+                
+                // Create template in document context
+                const template = document.createElement('template');
+                template.innerHTML = `
+                    <li class="tab-item">
+                        <div class="tab-content">
+                            <div class="tab-info">
+                                <img class="tab-favicon" width="16" height="16" decoding="sync">
+                                <span class="tab-title"></span>
+                            </div>
+                            <div class="close-button-container">
+                                <button class="close-tab" aria-label="Close tab" type="button">×</button>
+                            </div>
                         </div>
-                        <div class="close-button-container">
-                            <button class="close-tab" aria-label="Close tab" type="button">×</button>
-                        </div>
-                    </div>
-                </li>
-            `.trim();
-            
-            // Clear existing tabs
-            while (tabsList.firstChild) {
-                tabsList.removeChild(tabsList.firstChild);
-            }
-            
-            // Process tabs sequentially
-            for (const tab of tabs) {
-                // Clone template for each tab
-                const tabItem = template.content.cloneNode(true).firstElementChild;
-                const favicon = tabItem.querySelector('.tab-favicon');
-                const titleSpan = tabItem.querySelector('.tab-title');
+                    </li>
+                `.trim();
                 
-                // Setup tab item
-                tabItem.dataset.tabId = tab.id;
-                
-                // Set width class
-                if (tabs.length === 1) {
-                    tabItem.classList.add('single-tab');
-                } else if (tabs.length >= 5) {
-                    tabItem.classList.add('minimal');
-                } else {
-                    tabItem.style.setProperty('--tab-width', `${tabWidth}px`);
+                // Clear existing tabs
+                while (tabsList.firstChild) {
+                    tabsList.removeChild(tabsList.firstChild);
                 }
+
+                // Ensure styles are loaded
+                EdgeTabsPlus.styles.addLoggerStyles();
+                EdgeTabsPlus.uiComponents.injectStyles();
                 
-                // Clean and set title
-                const cleanTitle = tab.title
-                    ?.replace(/ at DuckDuckGo$/i, '')
-                    ?.replace(/ - DuckDuckGo$/i, '')
-                    ?.split(' - ')[0]
-                    ?.trim() || 'New Tab';
-                titleSpan.textContent = cleanTitle;
-                
-                // Load favicon
-                try {
-                    favicon.src = await EdgeTabsPlus.faviconHandler.loadFavicon(tab);
-                    EdgeTabsPlus.logger.addLog(`Loaded favicon for tab ${tab.id}`);
-                } catch (error) {
-                    EdgeTabsPlus.logger.error(`Failed to load favicon for tab ${tab.id}`);
-                    favicon.src = EdgeTabsPlus.faviconHandler.getDefaultIcon();
-                }
-                
-                // Set active state
-                if (tab.active) {
-                    tabItem.classList.add('active');
-                }
-                
+                // Process tabs sequentially
+                for (const tab of tabs) {
+                    // Clone template for each tab
+                    const tabItem = template.content.cloneNode(true).firstElementChild;
+                    const favicon = tabItem.querySelector('.tab-favicon');
+                    const titleSpan = tabItem.querySelector('.tab-title');
+                    
+                    // Setup tab item
+                    tabItem.dataset.tabId = tab.id;
+                    
+                    // Set width class
+                    if (tabs.length === 1) {
+                        tabItem.classList.add('single-tab');
+                    } else if (tabs.length >= 5) {
+                        tabItem.classList.add('minimal');
+                    } else {
+                        tabItem.style.setProperty('--tab-width', `${tabWidth}px`);
+                    }
+                    
+                    // Clean and set title
+                    const cleanTitle = tab.title
+                        ?.replace(/ at DuckDuckGo$/i, '')
+                        ?.replace(/ - DuckDuckGo$/i, '')
+                        ?.split(' - ')[0]
+                        ?.trim() || 'New Tab';
+                    titleSpan.textContent = cleanTitle;
+                    
+                    // Load favicon
+                    try {
+                        favicon.src = await EdgeTabsPlus.faviconHandler.loadFavicon(tab);
+                        EdgeTabsPlus.logger.addLog(`Loaded favicon for tab ${tab.id}`);
+                    } catch (error) {
+                        EdgeTabsPlus.logger.error(`Failed to load favicon for tab ${tab.id}`);
+                        favicon.src = EdgeTabsPlus.faviconHandler.getDefaultIcon();
+                    }
+                    
+                    // Set active state
+                    if (tab.active) {
+                        tabItem.classList.add('active');
+                    }
+                    
                     // Add to fragment
                     fragment.appendChild(tabItem);
                 }
-    
+        
                 // Add all tabs to DOM at once
                 tabsList.appendChild(fragment);
                 
                 // Update UI state
                 this.updateMinimalTabs();
                 this.updateScrollIndicators();
+            } catch (error) {
+                EdgeTabsPlus.logger.error('Failed to render tabs:', error);
+            }
         },
 
         updateScrollIndicators() {
-            const tabsList = document.getElementById('tabs-list');
+            const tabStrip = document.getElementById('edgetabs-plus-host');
+            if (!tabStrip || !tabStrip.shadowRoot) return;
+            
+            const tabsList = tabStrip.shadowRoot.getElementById('tabs-list');
             if (!tabsList) return;
             
             const hasLeftScroll = tabsList.scrollLeft > 10;
@@ -123,7 +145,10 @@
         },
 
         updateMinimalTabs() {
-            const tabs = document.querySelectorAll('.tab-item');
+            const tabStrip = document.getElementById('edgetabs-plus-host');
+            if (!tabStrip || !tabStrip.shadowRoot) return;
+            
+            const tabs = tabStrip.shadowRoot.querySelectorAll('.tab-item');
             const TAB_THRESHOLD = 5;
             
             tabs.forEach(tab => {

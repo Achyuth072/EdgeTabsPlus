@@ -12,62 +12,72 @@
             // Initialize config first as other modules depend on it
             EdgeTabsPlus.config.init();
 
-            // Initialize modules in correct dependency order
-            EdgeTabsPlus.styles.init();
-            EdgeTabsPlus.logger.init();
-            
-            // Initialize states from storage
-            chrome.storage.sync.get(['theme', 'isDarkMode', 'showTabStrip', 'autoHide'], (result) => {
-                // Theme initialization
-                let theme = result.theme;
-                if (!theme) {
-                    // Fallback to old isDarkMode setting or system preference
-                    const isDark = result.isDarkMode !== undefined ? result.isDarkMode :
-                                 window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    theme = isDark ? 'dark' : 'light';
-                }
-                
-                // Apply theme to host element
-                const host = document.getElementById('edgetabs-plus-host');
-                if (host) {
-                    host.setAttribute('theme', theme);
-                    // Store theme state for quick access
-                    window.EdgeTabsPlus.currentTheme = theme;
-                }
-                
-                EdgeTabsPlus.logger.addLog(`Initialized theme: ${theme} mode`);
-                
-                // Tab strip visibility initialization
-                const tabStrip = document.getElementById('edgetabs-plus-strip');
-                if (tabStrip) {
-                    const showStrip = result.showTabStrip !== undefined ? result.showTabStrip : true;
-                    if (showStrip) {
-                        tabStrip.style.display = 'flex';
-                        tabStrip.classList.add('visible');
-                    } else {
-                        tabStrip.style.display = 'none';
-                    }
-                    EdgeTabsPlus.logger.addLog(`Initialized tab strip visibility: ${showStrip}`);
-                }
-                
-                // Auto-hide initialization
-                const autoHide = result.autoHide !== undefined ? result.autoHide : true;
-                if (tabStrip) {
-                    tabStrip.classList.toggle('auto-hide-enabled', autoHide);
-                }
-                EdgeTabsPlus.scrollHandler.setAutoHide(autoHide);
-                EdgeTabsPlus.logger.addLog(`Initialized auto-hide: ${autoHide}`);
-            });
-            
             // Log initialization started
-            EdgeTabsPlus.logger.addLog('Starting EdgeTabs+ initialization...');
-            EdgeTabsPlus.logger.addLog(`Using scroll threshold: ${EdgeTabsPlus.config.scroll.threshold}px`);
+            console.log('Starting EdgeTabs+ initialization...');
             
-            EdgeTabsPlus.faviconHandler.init();
+            // Initialize in dependency order
+            EdgeTabsPlus.config.init();
+            EdgeTabsPlus.styles.init();
             EdgeTabsPlus.uiComponents.init();
+            EdgeTabsPlus.logger.init();
+
+            // After logger is ready, use it for subsequent logs
+            EdgeTabsPlus.logger.addLog('Core modules initialized');
+            EdgeTabsPlus.logger.addLog(`Using scroll threshold: ${EdgeTabsPlus.config.scroll.threshold}px`);
+
+            // Initialize remaining modules
+            EdgeTabsPlus.faviconHandler.init();
             EdgeTabsPlus.tabManager.init();
             EdgeTabsPlus.scrollHandler.init();
             EdgeTabsPlus.touchHandler.init();
+
+            // Log module initialization complete
+            EdgeTabsPlus.logger.addLog('All modules initialized successfully');
+
+            // Initialize states from storage
+            chrome.storage.sync.get(['theme', 'isDarkMode', 'showTabStrip', 'autoHide'], (result) => {
+                try {
+                    // Theme initialization
+                    let theme = result.theme;
+                    if (!theme) {
+                        const isDark = result.isDarkMode !== undefined ? result.isDarkMode :
+                                     window.matchMedia('(prefers-color-scheme: dark)').matches;
+                        theme = isDark ? 'dark' : 'light';
+                    }
+                    
+                    // Apply theme to host element in shadow DOM
+                    const host = document.getElementById('edgetabs-plus-host');
+                    if (host && host.shadowRoot) {
+                        host.setAttribute('theme', theme);
+                        window.EdgeTabsPlus.currentTheme = theme;
+                        
+                        // Access strip through shadow DOM
+                        const strip = host.shadowRoot.getElementById('edgetabs-plus-strip');
+                        if (strip) {
+                            // Set visibility
+                            const showStrip = result.showTabStrip !== undefined ? result.showTabStrip : true;
+                            strip.style.display = showStrip ? 'flex' : 'none';
+                            strip.classList.toggle('visible', showStrip);
+                            
+                            // Set auto-hide
+                            const autoHide = result.autoHide !== undefined ? result.autoHide : true;
+                            strip.classList.toggle('auto-hide-enabled', autoHide);
+                            EdgeTabsPlus.scrollHandler.setAutoHide(autoHide);
+                            
+                            // Force style recalculation
+                            void strip.offsetHeight;
+                            
+                            EdgeTabsPlus.logger.addLog(`Theme set to ${theme}, visibility: ${showStrip}, auto-hide: ${autoHide}`);
+                        } else {
+                            EdgeTabsPlus.logger.error('Strip element not found in shadow DOM');
+                        }
+                    } else {
+                        EdgeTabsPlus.logger.error('Host element or shadow root not found');
+                    }
+                } catch (error) {
+                    EdgeTabsPlus.logger.error('Failed to initialize states:', error);
+                }
+            });
 
             // Verify all modules are properly initialized
             if (!EdgeTabsPlus.isInitialized()) {
@@ -103,34 +113,37 @@
                 try {
                     logger.addLog('Received theme change message:', message);
                     const host = document.getElementById('edgetabs-plus-host');
-                    
-                    if (host) {
-                        // Add transitioning class to prevent flicker
-                        host.classList.add('theme-transitioning');
-                        
-                        // Update theme attribute
-                        host.setAttribute('theme', message.theme);
-                        
-                        // Store theme state
-                        window.EdgeTabsPlus.currentTheme = message.theme;
-                        
-                        // Remove transitioning class after animation
-                        setTimeout(() => {
-                            host.classList.remove('theme-transitioning');
-                            
-                            // Force style recalculation for shadow DOM
-                            if (host.shadowRoot) {
-                                void host.shadowRoot.querySelector('#edgetabs-plus-strip').offsetHeight;
-                            }
-                        }, 300);
-                        
-                        logger.addLog(`Theme updated to ${message.theme} mode`);
-                        
-                        // Reinject styles to ensure proper theme application
-                        EdgeTabsPlus.uiComponents.injectStyles();
-                    } else {
-                        logger.error('Tab strip host element not found');
+                    if (!host || !host.shadowRoot) {
+                        throw new Error('Tab strip host element or shadow root not found');
                     }
+
+                    const strip = host.shadowRoot.getElementById('edgetabs-plus-strip');
+                    if (!strip) {
+                        throw new Error('Strip element not found in shadow DOM');
+                    }
+
+                    // Add transitioning class to prevent flicker
+                    host.classList.add('theme-transitioning');
+                    strip.classList.add('theme-transitioning');
+                    
+                    // Update theme
+                    host.setAttribute('theme', message.theme);
+                    window.EdgeTabsPlus.currentTheme = message.theme;
+                    
+                    // Ensure styles are updated
+                    EdgeTabsPlus.styles.addLoggerStyles();
+                    EdgeTabsPlus.uiComponents.injectStyles();
+                    
+                    // Force layout recalculation
+                    void strip.offsetHeight;
+                    
+                    // Remove transition classes after animation
+                    setTimeout(() => {
+                        host.classList.remove('theme-transitioning');
+                        strip.classList.remove('theme-transitioning');
+                    }, 300);
+                    
+                    logger.addLog(`Theme updated to ${message.theme} mode`);
                     
                     // Send confirmation
                     if (sendResponse) {

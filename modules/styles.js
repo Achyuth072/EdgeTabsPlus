@@ -10,7 +10,8 @@
                 tabState: this.getTabStateStyles(),
                 scrolling: this.getScrollingStyles(),
                 additional: this.getAdditionalStyles(),
-                colorScheme: this.getColorSchemeStyles()
+                colorScheme: this.getColorSchemeStyles(),
+                logger: this.getLoggerStyles()
             };
             
             // Add styles to document for theme variables
@@ -27,6 +28,123 @@
                 ${this.styles.scrolling}
                 ${this.styles.additional}
                 ${this.styles.colorScheme}
+                ${this.styles.logger}
+            `;
+        },
+
+        addLoggerStyles() {
+            // Find the shadow root from the tab strip host
+            const tabStrip = document.getElementById('edgetabs-plus-host');
+            if (!tabStrip || !tabStrip.shadowRoot) {
+                console.error('Tab strip or shadow root not found');
+                return;
+            }
+
+            // Update or create style element
+            let styleElement = tabStrip.shadowRoot.querySelector('style');
+            if (!styleElement) {
+                styleElement = document.createElement('style');
+                tabStrip.shadowRoot.appendChild(styleElement);
+            }
+            styleElement.textContent = this.getStyles();
+        },
+
+        getLoggerStyles() {
+            return `
+                :host {
+                    --logger-bg: rgba(0, 0, 0, 0.9);
+                    --logger-text: #ffffff;
+                    --logger-border: rgba(255, 255, 255, 0.1);
+                    --logger-btn-bg: var(--tab-active-indicator, #0078D7);
+                    --logger-btn-color: #ffffff;
+                    --logger-btn-shadow: rgba(0, 0, 0, 0.2);
+                }
+
+                :host([theme="dark"]) {
+                    --logger-bg: rgba(0, 0, 0, 0.95);
+                    --logger-text: #e8eaed;
+                    --logger-border: rgba(255, 255, 255, 0.15);
+                    --logger-btn-bg: var(--tab-active-indicator, #8ab4f8);
+                    --logger-btn-color: #ffffff;
+                    --logger-btn-shadow: rgba(0, 0, 0, 0.3);
+                }
+
+                #log-button-container {
+                    position: fixed;
+                    bottom: 100px;
+                    right: 10px;
+                    z-index: 2147483646;
+                }
+
+                #log-toggle-button {
+                    background-color: var(--logger-btn-bg);
+                    color: var(--logger-btn-color);
+                    border: none;
+                    border-radius: 50%;
+                    width: 40px;
+                    height: 40px;
+                    cursor: pointer;
+                    box-shadow: 0 2px 5px var(--logger-btn-shadow);
+                    outline: none;
+                    font-size: 20px;
+                    line-height: 40px;
+                    transition: transform 0.2s ease;
+                }
+
+                #log-toggle-button:hover {
+                    transform: scale(1.1);
+                }
+
+                #log-toggle-button:active {
+                    transform: scale(0.95);
+                }
+
+                #log-overlay {
+                    position: fixed;
+                    bottom: 40px;
+                    left: 0;
+                    width: 100%;
+                    background-color: var(--logger-bg);
+                    color: var(--logger-text);
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                    font-size: 12px;
+                    padding: 10px;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    z-index: 2147483645;
+                    border-top: 1px solid var(--logger-border);
+                    box-shadow: 0 -2px 10px var(--logger-btn-shadow);
+                }
+
+                #log-overlay::-webkit-scrollbar {
+                    width: 8px;
+                }
+
+                #log-overlay::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+
+                #log-overlay::-webkit-scrollbar-thumb {
+                    background: var(--logger-border);
+                    border-radius: 4px;
+                }
+
+                #log-overlay div {
+                    padding: 2px 0;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                }
+
+                #log-overlay div:not(:last-child) {
+                    border-bottom: 1px solid var(--logger-border);
+                    margin-bottom: 2px;
+                }
+
+                @media (prefers-reduced-motion: reduce) {
+                    #log-toggle-button {
+                        transition: none;
+                    }
+                }
             `;
         },
 
