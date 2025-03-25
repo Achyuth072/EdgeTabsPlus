@@ -1,7 +1,7 @@
 // Initialize EdgeTabs+ extension
 (function() {
     // Ensure initialization happens after DOM is loaded
-    function initialize() {
+    async function initialize() {
         // Check if namespace exists
         if (!window.EdgeTabsPlus) {
             console.error('EdgeTabsPlus namespace not found! Modules may not have loaded correctly.');
@@ -15,8 +15,7 @@
             // Log initialization started
             console.log('Starting EdgeTabs+ initialization...');
             
-            // Initialize in dependency order
-            EdgeTabsPlus.config.init();
+            // Initialize core modules in dependency order
             EdgeTabsPlus.styles.init();
             EdgeTabsPlus.uiComponents.init();
             EdgeTabsPlus.logger.init();
@@ -25,58 +24,68 @@
             EdgeTabsPlus.logger.addLog('Core modules initialized');
             EdgeTabsPlus.logger.addLog(`Using scroll threshold: ${EdgeTabsPlus.config.scroll.threshold}px`);
 
+            // Initialize favicon handler with retry logic
+            try {
+                await EdgeTabsPlus.faviconHandler.init();
+                EdgeTabsPlus.logger.addLog('Favicon handler initialized successfully');
+            } catch (error) {
+                EdgeTabsPlus.logger.error('Favicon handler initialization failed, using fallback:', error);
+                // Reset to basic memory cache if IndexedDB fails
+                EdgeTabsPlus.faviconHandler.db = null;
+                EdgeTabsPlus.faviconHandler.cache.clear();
+            }
+
             // Initialize remaining modules
-            EdgeTabsPlus.faviconHandler.init();
             EdgeTabsPlus.tabManager.init();
             EdgeTabsPlus.scrollHandler.init();
             EdgeTabsPlus.touchHandler.init();
 
-            // Log module initialization complete
-            EdgeTabsPlus.logger.addLog('All modules initialized successfully');
-
             // Initialize states from storage
-            chrome.storage.sync.get(['theme', 'isDarkMode', 'showTabStrip', 'autoHide'], (result) => {
-                try {
-                    // Theme initialization
-                    let theme = result.theme;
-                    if (!theme) {
-                        const isDark = result.isDarkMode !== undefined ? result.isDarkMode :
-                                     window.matchMedia('(prefers-color-scheme: dark)').matches;
-                        theme = isDark ? 'dark' : 'light';
-                    }
-                    
-                    // Apply theme to host element in shadow DOM
-                    const host = document.getElementById('edgetabs-plus-host');
-                    if (host && host.shadowRoot) {
-                        host.setAttribute('theme', theme);
-                        window.EdgeTabsPlus.currentTheme = theme;
-                        
-                        // Access strip through shadow DOM
-                        const strip = host.shadowRoot.getElementById('edgetabs-plus-strip');
-                        if (strip) {
-                            // Set visibility
-                            const showStrip = result.showTabStrip !== undefined ? result.showTabStrip : true;
-                            strip.style.display = showStrip ? 'flex' : 'none';
-                            strip.classList.toggle('visible', showStrip);
-                            
-                            // Set auto-hide
-                            const autoHide = result.autoHide !== undefined ? result.autoHide : true;
-                            strip.classList.toggle('auto-hide-enabled', autoHide);
-                            EdgeTabsPlus.scrollHandler.setAutoHide(autoHide);
-                            
-                            // Force style recalculation
-                            void strip.offsetHeight;
-                            
-                            EdgeTabsPlus.logger.addLog(`Theme set to ${theme}, visibility: ${showStrip}, auto-hide: ${autoHide}`);
-                        } else {
-                            EdgeTabsPlus.logger.error('Strip element not found in shadow DOM');
+            await new Promise((resolve) => {
+                chrome.storage.sync.get(['theme', 'isDarkMode', 'showTabStrip', 'autoHide'], (result) => {
+                    try {
+                        // Theme initialization
+                        let theme = result.theme;
+                        if (!theme) {
+                            const isDark = result.isDarkMode !== undefined ? result.isDarkMode :
+                                         window.matchMedia('(prefers-color-scheme: dark)').matches;
+                            theme = isDark ? 'dark' : 'light';
                         }
-                    } else {
-                        EdgeTabsPlus.logger.error('Host element or shadow root not found');
+                        
+                        // Apply theme to host element in shadow DOM
+                        const host = document.getElementById('edgetabs-plus-host');
+                        if (host && host.shadowRoot) {
+                            host.setAttribute('theme', theme);
+                            window.EdgeTabsPlus.currentTheme = theme;
+                            
+                            // Access strip through shadow DOM
+                            const strip = host.shadowRoot.getElementById('edgetabs-plus-strip');
+                            if (strip) {
+                                // Set visibility
+                                const showStrip = result.showTabStrip !== undefined ? result.showTabStrip : true;
+                                strip.style.display = showStrip ? 'flex' : 'none';
+                                strip.classList.toggle('visible', showStrip);
+                                
+                                // Set auto-hide
+                                const autoHide = result.autoHide !== undefined ? result.autoHide : true;
+                                strip.classList.toggle('auto-hide-enabled', autoHide);
+                                EdgeTabsPlus.scrollHandler.setAutoHide(autoHide);
+                                
+                                // Force style recalculation
+                                void strip.offsetHeight;
+                                
+                                EdgeTabsPlus.logger.addLog(`Theme set to ${theme}, visibility: ${showStrip}, auto-hide: ${autoHide}`);
+                            } else {
+                                EdgeTabsPlus.logger.error('Strip element not found in shadow DOM');
+                            }
+                        } else {
+                            EdgeTabsPlus.logger.error('Host element or shadow root not found');
+                        }
+                    } catch (error) {
+                        EdgeTabsPlus.logger.error('Failed to initialize states:', error);
                     }
-                } catch (error) {
-                    EdgeTabsPlus.logger.error('Failed to initialize states:', error);
-                }
+                    resolve();
+                });
             });
 
             // Verify all modules are properly initialized
@@ -212,7 +221,6 @@
                     }
                 }
                 return true; // Keep message channel open
-                break;
         }
     });
 

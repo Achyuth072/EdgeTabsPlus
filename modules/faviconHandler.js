@@ -1,32 +1,119 @@
 (function() {
     window.EdgeTabsPlus = window.EdgeTabsPlus || {};
 
+    // Constants
+    const DB_NAME = 'EdgeTabsPlus';
+    const STORE_NAME = 'favicons';
+    const DB_VERSION = 1;
+    const CACHE_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
     EdgeTabsPlus.faviconHandler = {
         cache: new Map(),
         loadingPromises: new Map(),
+        db: null,
 
-        init() {
+        async init() {
             EdgeTabsPlus.logger.addLog('Initializing favicon handler...');
+            await this.initDatabase();
+            await this.loadCacheFromDB();
             return this;
         },
 
-        getCacheKey(tab) {
-            return `${tab.id}-${tab.url}`;
-        },
+        async initDatabase() {
+            try {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-        getCachedFavicon(tab) {
-            const cacheKey = this.getCacheKey(tab);
-            const cachedIcon = this.cache.get(cacheKey);
-            if (cachedIcon) {
-                EdgeTabsPlus.logger.addLog(`Using cached favicon for tab ${tab.id}: ${cachedIcon}`);
+                    request.onerror = () => {
+                        EdgeTabsPlus.logger.error('Failed to open IndexedDB');
+                        resolve(); // Continue without persistence
+                    };
+
+                    request.onsuccess = (event) => {
+                        this.db = event.target.result;
+                        EdgeTabsPlus.logger.addLog('IndexedDB initialized');
+                        resolve();
+                    };
+
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(STORE_NAME)) {
+                            const store = db.createObjectStore(STORE_NAME, { keyPath: 'url' });
+                            store.createIndex('timestamp', 'timestamp');
+                        }
+                    };
+                });
+            } catch (error) {
+                EdgeTabsPlus.logger.error('IndexedDB initialization failed:', error);
             }
-            return cachedIcon;
         },
 
-        setCachedFavicon(tab, faviconUrl) {
-            const cacheKey = this.getCacheKey(tab);
-            this.cache.set(cacheKey, faviconUrl);
-            EdgeTabsPlus.logger.addLog(`Cached favicon for tab ${tab.id}: ${faviconUrl}`);
+        async loadCacheFromDB() {
+            if (!this.db) return;
+
+            try {
+                const transaction = this.db.transaction(STORE_NAME, 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.getAll();
+
+                await new Promise((resolve, reject) => {
+                    request.onsuccess = () => {
+                        const items = request.result;
+                        const now = Date.now();
+                        items.forEach(item => {
+                            if (now - item.timestamp < CACHE_EXPIRY) {
+                                this.cache.set(this.getNormalizedUrl(item.url), item.favicon);
+                            }
+                        });
+                        EdgeTabsPlus.logger.addLog(`Loaded ${this.cache.size} favicons from DB`);
+                        resolve();
+                    };
+                    request.onerror = () => {
+                        EdgeTabsPlus.logger.error('Failed to load cache from DB');
+                        resolve();
+                    };
+                });
+            } catch (error) {
+                EdgeTabsPlus.logger.error('Error loading cache from DB:', error);
+            }
+        },
+
+        async saveToDB(url, favicon) {
+            if (!this.db) return;
+
+            try {
+                const transaction = this.db.transaction(STORE_NAME, 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const item = {
+                    url: this.getNormalizedUrl(url),
+                    favicon,
+                    timestamp: Date.now()
+                };
+                await store.put(item);
+            } catch (error) {
+                EdgeTabsPlus.logger.error('Failed to save favicon to DB:', error);
+            }
+        },
+
+        getNormalizedUrl(url) {
+            try {
+                const urlObj = new URL(url);
+                return urlObj.origin;
+            } catch (error) {
+                return url;
+            }
+        },
+
+        async getCachedFavicon(tab) {
+            const normalizedUrl = this.getNormalizedUrl(tab.url);
+            return this.cache.get(normalizedUrl);
+        },
+
+        async setCachedFavicon(tab, faviconUrl) {
+            const normalizedUrl = this.getNormalizedUrl(tab.url);
+            this.cache.set(normalizedUrl, faviconUrl);
+            await this.saveToDB(normalizedUrl, faviconUrl);
+            EdgeTabsPlus.logger.addLog(`Cached favicon for ${normalizedUrl}`);
         },
 
         getDefaultIcon() {
@@ -48,78 +135,124 @@
         },
 
         async loadFavicon(tab) {
-            if (!tab || !tab.url) {
-                EdgeTabsPlus.logger.addLog(`No valid tab or URL for favicon loading`);
+            if (!tab?.url) {
                 return this.getDefaultIcon();
             }
 
-            const cacheKey = this.getCacheKey(tab);
+            const normalizedUrl = this.getNormalizedUrl(tab.url);
 
-            // Check if already loading this favicon
-            if (this.loadingPromises.has(cacheKey)) {
-                EdgeTabsPlus.logger.addLog(`Already loading favicon for tab ${tab.id}, waiting...`);
-                return this.loadingPromises.get(cacheKey);
+            // Check if already loading
+            if (this.loadingPromises.has(normalizedUrl)) {
+                return this.loadingPromises.get(normalizedUrl);
             }
 
-            // Create new loading promise
             const loadingPromise = new Promise(async (resolve) => {
                 try {
-                    // Check if it's an Edge internal page
+                    // Edge internal pages
                     if (tab.url.startsWith('edge://')) {
-                        EdgeTabsPlus.logger.addLog(`Edge internal page detected for tab: ${tab.id}`);
                         const edgeIcon = this.getEdgeIcon();
-                        this.setCachedFavicon(tab, edgeIcon);
+                        await this.setCachedFavicon(tab, edgeIcon);
                         resolve(edgeIcon);
                         return;
                     }
 
-                    // Try cached favicon first
-                    const cachedIcon = this.getCachedFavicon(tab);
+                    // Check memory cache
+                    const cachedIcon = await this.getCachedFavicon(tab);
                     if (cachedIcon) {
                         resolve(cachedIcon);
                         return;
                     }
 
-                    // Always try DuckDuckGo's service first for reliability
+                    // Try DuckDuckGo service
                     const duckDuckGoUrl = this.getDuckDuckGoFavicon(tab.url);
                     if (duckDuckGoUrl) {
-                        EdgeTabsPlus.logger.addLog(`Using DuckDuckGo favicon service for tab ${tab.id}: ${duckDuckGoUrl}`);
-                        this.setCachedFavicon(tab, duckDuckGoUrl);
+                        await this.setCachedFavicon(tab, duckDuckGoUrl);
                         resolve(duckDuckGoUrl);
                         return;
                     }
 
-                    // If DuckDuckGo fails, try tab's native favicon
+                    // Fallback to native favicon
                     if (tab.favIconUrl) {
-                        EdgeTabsPlus.logger.addLog(`Using native favicon for tab ${tab.id}: ${tab.favIconUrl}`);
-                        this.setCachedFavicon(tab, tab.favIconUrl);
+                        await this.setCachedFavicon(tab, tab.favIconUrl);
                         resolve(tab.favIconUrl);
                         return;
                     }
 
-                    // Last resort: default icon
+                    // Default icon as last resort
                     const defaultIcon = this.getDefaultIcon();
-                    EdgeTabsPlus.logger.addLog(`Using default icon for tab ${tab.id}`);
-                    this.setCachedFavicon(tab, defaultIcon);
+                    await this.setCachedFavicon(tab, defaultIcon);
                     resolve(defaultIcon);
 
                 } catch (error) {
                     EdgeTabsPlus.logger.error(`Error loading favicon: ${error.message}`);
-                    const defaultIcon = this.getDefaultIcon();
-                    this.setCachedFavicon(tab, defaultIcon);
-                    resolve(defaultIcon);
+                    resolve(this.getDefaultIcon());
                 } finally {
-                    this.loadingPromises.delete(cacheKey);
+                    this.loadingPromises.delete(normalizedUrl);
                 }
             });
 
-            this.loadingPromises.set(cacheKey, loadingPromise);
+            this.loadingPromises.set(normalizedUrl, loadingPromise);
             return loadingPromise;
         },
 
-        clearCache() {
+        async clearCache() {
             this.cache.clear();
-            EdgeTabsPlus.logger.addLog('Favicon cache cleared');
+            if (this.db) {
+                try {
+                    const transaction = this.db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    await store.clear();
+                    EdgeTabsPlus.logger.addLog('Favicon cache cleared (memory and DB)');
+                } catch (error) {
+                    EdgeTabsPlus.logger.error('Failed to clear DB cache:', error);
+                }
+            }
+        },
+
+        /**
+         * Clear both memory and IndexedDB cache
+         */
+        async clearCache() {
+            this.cache.clear();
+            if (this.db) {
+                try {
+                    const transaction = this.db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    await store.clear();
+                    EdgeTabsPlus.logger.addLog('Favicon cache cleared (memory and DB)');
+                } catch (error) {
+                    EdgeTabsPlus.logger.error('Failed to clear DB cache:', error);
+                    EdgeTabsPlus.logger.addLog('Memory cache cleared only');
+                }
+            } else {
+                EdgeTabsPlus.logger.addLog('Memory cache cleared (DB not available)');
+            }
+        },
+
+        /**
+         * For debugging: Get cache statistics
+         */
+        async getCacheStats() {
+            const memorySize = this.cache.size;
+            let dbSize = 0;
+            if (this.db) {
+                try {
+                    const transaction = this.db.transaction(STORE_NAME, 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.count();
+                    await new Promise((resolve, reject) => {
+                        request.onsuccess = () => {
+                            dbSize = request.result;
+                            resolve();
+                        };
+                        request.onerror = reject;
+                    });
+                } catch (error) {
+                    EdgeTabsPlus.logger.error('Failed to get DB stats:', error);
+                }
+            }
+            EdgeTabsPlus.logger.addLog(`Cache stats - Memory: ${memorySize}, DB: ${dbSize} items`);
+            return { memorySize, dbSize };
         }
     };
 })();
