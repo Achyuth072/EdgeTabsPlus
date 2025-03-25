@@ -7,6 +7,9 @@
     EdgeTabsPlus.logger = {
         overlay: null,
         toggleButton: null,
+        exportButton: null,
+        closeButton: null,
+        logEntries: [],
         isEnabled: DEBUG && window.location.protocol !== 'edge-debug:',
         shadowRoot: null,
 
@@ -44,22 +47,54 @@
             overlay.id = 'log-overlay';
             overlay.style.display = 'none';
             overlay.setAttribute('part', 'log-overlay');
+
+            // Create header
+            const header = document.createElement('div');
+            header.className = 'log-header';
+
+            const title = document.createElement('div');
+            title.className = 'log-title';
+            title.textContent = 'Application Logs';
+
+            const controls = document.createElement('div');
+            controls.className = 'log-controls';
+
+            // Export button
+            this.exportButton = document.createElement('button');
+            this.exportButton.className = 'log-export-button';
+            this.exportButton.textContent = '⬇️';
+            this.exportButton.setAttribute('aria-label', 'Export logs');
+            this.exportButton.title = 'Export logs';
+
+            // Close button
+            this.closeButton = document.createElement('button');
+            this.closeButton.className = 'log-close-button';
+            this.closeButton.textContent = '✕';
+            this.closeButton.setAttribute('aria-label', 'Close logs');
+            this.closeButton.title = 'Close logs';
+
+            controls.appendChild(this.exportButton);
+            controls.appendChild(this.closeButton);
+            header.appendChild(title);
+            header.appendChild(controls);
+
+            // Create logs container
+            const logsContainer = document.createElement('div');
+            logsContainer.className = 'logs-container';
+
+            overlay.appendChild(header);
+            overlay.appendChild(logsContainer);
             this.shadowRoot.appendChild(overlay);
             return overlay;
         },
 
         createToggleButton() {
-            const container = document.createElement('div');
-            container.id = 'log-button-container';
-            
             const button = document.createElement('button');
             button.id = 'log-toggle-button';
             button.textContent = '📜';
             button.setAttribute('aria-label', 'Toggle debug logs');
             button.setAttribute('part', 'log-button');
-            
-            container.appendChild(button);
-            this.shadowRoot.appendChild(container);
+            this.shadowRoot.appendChild(button);
             return button;
         },
 
@@ -67,6 +102,39 @@
             this.toggleButton.onclick = () => {
                 if (!this.overlay) return;
                 this.overlay.style.display = this.overlay.style.display === 'none' ? 'block' : 'none';
+            };
+
+            this.closeButton.onclick = () => {
+                if (!this.overlay) return;
+                this.overlay.style.display = 'none';
+            };
+
+            this.exportButton.onclick = async () => {
+                if (!this.overlay || !this.overlay.children.length) {
+                    this.error('No logs to export');
+                    return;
+                }
+
+                try {
+                    const logsContainer = this.overlay.querySelector('.logs-container');
+                    const logs = Array.from(logsContainer.children).map(entry => entry.textContent);
+                    const jsonStr = JSON.stringify(logs, null, 2);
+                    const blob = new Blob([jsonStr], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `edgetabs-logs-${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    this.addLog('✅ Logs exported successfully');
+                } catch (error) {
+                    console.error('Failed to export logs:', error);
+                    this.error('❌ Failed to export logs', error);
+                }
             };
         },
 
@@ -82,8 +150,10 @@
             const timestamp = new Date().toLocaleTimeString();
             const logEntry = document.createElement('div');
             logEntry.textContent = `[${timestamp}] ${message}`;
-            this.overlay.appendChild(logEntry);
-            this.overlay.scrollTop = this.overlay.scrollHeight;
+            
+            const logsContainer = this.overlay.querySelector('.logs-container');
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
         },
 
         error(message, error) {

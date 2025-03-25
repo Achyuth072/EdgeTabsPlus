@@ -69,14 +69,18 @@
                     --logger-btn-shadow: rgba(0, 0, 0, 0.3);
                 }
 
-                #log-button-container {
+                #log-controls {
                     position: fixed;
                     bottom: 100px;
                     right: 10px;
                     z-index: 2147483646;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
                 }
 
-                #log-toggle-button {
+                #log-toggle-button,
+                #log-export-button {
                     background-color: var(--logger-btn-bg);
                     color: var(--logger-btn-color);
                     border: none;
@@ -87,8 +91,10 @@
                     box-shadow: 0 2px 5px var(--logger-btn-shadow);
                     outline: none;
                     font-size: 20px;
-                    line-height: 40px;
-                    transition: transform 0.2s ease;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: transform 0.2s ease, background-color 0.2s ease;
                 }
 
                 #log-toggle-button:hover {
@@ -106,14 +112,90 @@
                     width: 100%;
                     background-color: var(--logger-bg);
                     color: var(--logger-text);
-                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-                    font-size: 12px;
-                    padding: 10px;
-                    max-height: 200px;
-                    overflow-y: auto;
+                    max-height: 300px;
+                    display: flex;
+                    flex-direction: column;
                     z-index: 2147483645;
                     border-top: 1px solid var(--logger-border);
                     box-shadow: 0 -2px 10px var(--logger-btn-shadow);
+                }
+
+                .log-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 8px 12px;
+                    background-color: rgba(0, 0, 0, 0.2);
+                    border-bottom: 1px solid var(--logger-border);
+                }
+
+                .log-title {
+                    font-family: system-ui, -apple-system, sans-serif;
+                    font-size: 14px;
+                    font-weight: 500;
+                }
+
+                .log-controls {
+                    display: flex;
+                    gap: 8px;
+                }
+
+                .log-export-button,
+                .log-close-button {
+                    background: none;
+                    border: none;
+                    color: var(--logger-text);
+                    padding: 4px 8px;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    transition: background-color 0.2s ease;
+                }
+
+                .log-export-button:hover,
+                .log-close-button:hover {
+                    background-color: rgba(255, 255, 255, 0.1);
+                }
+
+                .log-export-button:active,
+                .log-close-button:active {
+                    background-color: rgba(255, 255, 255, 0.2);
+                }
+
+                .logs-container {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 10px;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                    font-size: 12px;
+                }
+
+                /* Mobile optimizations */
+                @media (max-width: 768px) {
+                    .log-header {
+                        padding: 10px;
+                    }
+
+                    .log-export-button,
+                    .log-close-button {
+                        padding: 8px 12px;
+                        min-width: 44px;
+                        min-height: 44px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                    }
+
+                    .logs-container {
+                        padding: 8px;
+                    }
+                }
+
+                #log-overlay.export-success {
+                    background-color: rgba(0, 255, 0, 0.1);
+                }
+
+                #log-overlay.export-error {
+                    background-color: rgba(255, 0, 0, 0.1);
                 }
 
                 #log-overlay::-webkit-scrollbar {
@@ -736,27 +818,39 @@
                     position: relative;
                 }
 
+                .tabs-list {
+                    isolation: isolate;
+                }
+
                 .tabs-list::before,
                 .tabs-list::after {
                     content: '';
                     position: absolute;
                     top: 0;
                     bottom: 0;
-                    width: 20px;
+                    width: 24px;
                     opacity: 0;
-                    transition: opacity 0.3s ease;
+                    transition: opacity 0.2s ease;
                     pointer-events: none;
-                    z-index: 2;
+                    z-index: 1;
                 }
                 
                 .tabs-list::before {
                     left: 0;
-                    background: linear-gradient(to right, var(--strip-bg), transparent);
+                    background: linear-gradient(to right,
+                        var(--strip-bg) 0%,
+                        rgba(var(--strip-bg-rgb), 0.8) 50%,
+                        transparent 100%
+                    );
                 }
                 
                 .tabs-list::after {
                     right: 0;
-                    background: linear-gradient(to left, var(--strip-bg), transparent);
+                    background: linear-gradient(to left,
+                        var(--strip-bg) 0%,
+                        rgba(var(--strip-bg-rgb), 0.8) 50%,
+                        transparent 100%
+                    );
                 }
                 
                 .tabs-list.scroll-left::before {
