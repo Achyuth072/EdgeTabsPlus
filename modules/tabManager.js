@@ -101,12 +101,20 @@
                         ?.trim() || 'New Tab';
                     titleSpan.textContent = cleanTitle;
                     
-                    // Load favicon
-                    try {
-                        favicon.src = await EdgeTabsPlus.faviconHandler.loadFavicon(tab);
-                        EdgeTabsPlus.logger.addLog(`Loaded favicon for tab ${tab.id}`);
-                    } catch (error) {
-                        EdgeTabsPlus.logger.error(`Failed to load favicon for tab ${tab.id}`);
+                    // Check cache before attempting to load
+                    const cachedSrc = await EdgeTabsPlus.faviconHandler.getCachedFavicon(tab);
+                    if (cachedSrc) {
+                        favicon.src = cachedSrc;
+                    } else if (tab.url) { // Only load if not cached and URL exists
+                        try {
+                            favicon.src = await EdgeTabsPlus.faviconHandler.loadFavicon(tab);
+                        } catch (error) {
+                            EdgeTabsPlus.logger.error(`[tabManager] Error loading favicon for tab ${tab.id}:`, error);
+                            favicon.src = EdgeTabsPlus.faviconHandler.getDefaultIcon(); // Correct reference
+                        }
+                    } else {
+                        // Handle tabs with no URL (e.g., edge://newtab)
+                        // Ensure we reference the correct object
                         favicon.src = EdgeTabsPlus.faviconHandler.getDefaultIcon();
                     }
                     
