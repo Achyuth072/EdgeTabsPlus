@@ -142,6 +142,12 @@
         },
 
         async getCachedFavicon(tab) {
+            // Skip cache for Edge URLs to ensure we always load fresh Edge icon
+            if (tab.url.startsWith('edge://') || tab.url === 'chrome-native://newtab/') {
+                EdgeTabsPlus.logger.debug(`[CACHE] Bypassing cache for Edge URL: ${tab.url}`);
+                return null;
+            }
+
             const normalizedUrl = this.getNormalizedUrl(tab.url);
             
             // Check memory cache
@@ -188,8 +194,23 @@
             return chrome.runtime.getURL('icons/default-favicon.png');
         },
 
-        getEdgeIcon() {
-            return chrome.runtime.getURL('icons/edge-logo.png');
+        async getEdgeIcon() {
+            const iconUrl = chrome.runtime.getURL('icons/edge-logo.png');
+            EdgeTabsPlus.logger.debug(`[getEdgeIcon] Generated Edge icon URL: ${iconUrl}`);
+            
+            try {
+                // Ensure the URL is accessible
+                const response = await fetch(iconUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                EdgeTabsPlus.logger.debug(`[getEdgeIcon] Icon fetch successful: ${response.ok}`);
+                return iconUrl;
+            } catch (error) {
+                EdgeTabsPlus.logger.error(`[getEdgeIcon] Icon fetch failed: ${error}`);
+                // Return the URL anyway since the error might be temporary
+                return iconUrl;
+            }
         },
 
         getDuckDuckGoFavicon(url) {
@@ -214,10 +235,20 @@
 
              const loadingPromise = new Promise(async (resolve) => {
                  try {
-                     // Edge internal pages
-                     if (tab.url.startsWith('edge://')) {
+                     // Edge internal pages (including chrome-native://newtab/)
+                     if (tab.url.startsWith('edge://') || tab.url === 'chrome-native://newtab/') {
+                         EdgeTabsPlus.logger.debug(`[LOAD_INTERNAL] Using Edge icon for ${tab.url}`);
+                         
+                         // Clear any cached version from both memory and IndexedDB
+                         await this.clearCache(tab.url);
+                         
+                         // Force a fresh icon load
                          const edgeIcon = this.getEdgeIcon();
-                         await this.setCachedFavicon(tab, edgeIcon);
+                         EdgeTabsPlus.logger.debug(`[LOAD_INTERNAL] Generated Edge icon URL: ${edgeIcon}`);
+                         
+                         // Set new favicon with cache busting
+                         await this.setCachedFavicon(tab, edgeIcon + '?t=' + Date.now());
+                         
                          resolve(edgeIcon);
                          return;
                      }
@@ -287,21 +318,39 @@
         },
 
 
-        async clearCache() {
-            const memoryCount = this.cache.size;
-            this.cache.clear();
-            if (this.db) {
-                try {
-                    const transaction = this.db.transaction(STORE_NAME, 'readwrite');
-                    const store = transaction.objectStore(STORE_NAME);
-                    await store.clear();
-                    EdgeTabsPlus.logger.addLog(`Cleared ${memoryCount} favicons from memory and DB`);
-                } catch (error) {
-                    EdgeTabsPlus.logger.error('Failed to clear DB cache:', error);
-                    EdgeTabsPlus.logger.addLog(`Cleared ${memoryCount} favicons from memory only`);
+        async clearCache(url = null) {
+            if (url) {
+                const normalizedUrl = this.getNormalizedUrl(url);
+                EdgeTabsPlus.logger.debug(`[CACHE] Clearing cache for specific URL: ${normalizedUrl}`);
+                // Clear from memory
+                this.cache.delete(normalizedUrl);
+                // Clear from DB
+                if (this.db) {
+                    try {
+                        const transaction = this.db.transaction(STORE_NAME, 'readwrite');
+                        const store = transaction.objectStore(STORE_NAME);
+                        await store.delete(normalizedUrl);
+                        EdgeTabsPlus.logger.debug(`[CACHE] Cleared ${normalizedUrl} from IndexedDB`);
+                    } catch (error) {
+                        EdgeTabsPlus.logger.error(`Failed to clear DB cache for ${normalizedUrl}:`, error);
+                    }
                 }
             } else {
-                EdgeTabsPlus.logger.addLog(`Cleared ${memoryCount} favicons from memory (DB not available)`);
+                const memoryCount = this.cache.size;
+                this.cache.clear();
+                if (this.db) {
+                    try {
+                        const transaction = this.db.transaction(STORE_NAME, 'readwrite');
+                        const store = transaction.objectStore(STORE_NAME);
+                        await store.clear();
+                        EdgeTabsPlus.logger.addLog(`Cleared ${memoryCount} favicons from memory and DB`);
+                    } catch (error) {
+                        EdgeTabsPlus.logger.error('Failed to clear DB cache:', error);
+                        EdgeTabsPlus.logger.addLog(`Cleared ${memoryCount} favicons from memory only`);
+                    }
+                } else {
+                    EdgeTabsPlus.logger.addLog(`Cleared ${memoryCount} favicons from memory (DB not available)`);
+                }
             }
         },
 

@@ -569,9 +569,16 @@
                     font-size: 12px;
                 }
     
-                /* Favicon sizing */
+                /* Favicon sizing & styling (using background-image) */
                 .tab-favicon {
                     flex-shrink: 0;
+                    width: 20px; /* Match previous size or desired size */
+                    height: 20px;
+                    background-size: contain; /* Or 'cover' */
+                    background-repeat: no-repeat;
+                    background-position: center;
+                    /* Optional: Add a default background color or placeholder */
+                    /* background-color: rgba(0,0,0,0.1); */
                 }
 
                 /* Larger touch target for mobile */

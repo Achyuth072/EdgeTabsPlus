@@ -55,7 +55,7 @@
                     <li class="tab-item">
                         <div class="tab-content">
                             <div class="tab-info">
-                                <img class="tab-favicon" width="16" height="16" decoding="sync">
+                                <div class="tab-favicon"></div> <!-- Changed from img to div -->
                                 <span class="tab-title"></span>
                             </div>
                             <div class="close-button-container">
@@ -102,21 +102,44 @@
                     titleSpan.textContent = cleanTitle;
                     
                     // Check cache before attempting to load
+                    EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Checking cache for ${tab.url}`);
                     const cachedSrc = await EdgeTabsPlus.faviconHandler.getCachedFavicon(tab);
+                    let finalSrc = null; // Variable to hold the determined src
+
                     if (cachedSrc) {
-                        favicon.src = cachedSrc;
+                        EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Cache hit for ${tab.url}. Determined src: ${cachedSrc}`);
+                        finalSrc = cachedSrc;
                     } else if (tab.url) { // Only load if not cached and URL exists
+                        EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Cache miss for ${tab.url}. Calling loadFavicon.`);
                         try {
-                            favicon.src = await EdgeTabsPlus.faviconHandler.loadFavicon(tab);
+                            const loadedSrc = await EdgeTabsPlus.faviconHandler.loadFavicon(tab);
+                            EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] loadFavicon returned: ${loadedSrc}. Determined src.`);
+                            finalSrc = loadedSrc;
                         } catch (error) {
-                            EdgeTabsPlus.logger.error(`[tabManager] Error loading favicon for tab ${tab.id}:`, error);
-                            favicon.src = EdgeTabsPlus.faviconHandler.getDefaultIcon(); // Correct reference
+                            EdgeTabsPlus.logger.error(`[tabManager ${tab.id}] Error loading favicon for ${tab.url}:`, error);
+                            const defaultIcon = EdgeTabsPlus.faviconHandler.getDefaultIcon();
+                            EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Determined default icon due to error: ${defaultIcon}`);
+                            finalSrc = defaultIcon; // Correct reference
                         }
                     } else {
-                        // Handle tabs with no URL (e.g., edge://newtab)
-                        // Ensure we reference the correct object
-                        favicon.src = EdgeTabsPlus.faviconHandler.getDefaultIcon();
+                        // Handle tabs with no URL (shouldn't happen for edge://newtab)
+                        const defaultIcon = EdgeTabsPlus.faviconHandler.getDefaultIcon();
+                        EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] No URL found. Determined default icon: ${defaultIcon}`);
+                        finalSrc = defaultIcon;
                     }
+
+                    // Apply the background-image slightly later using requestAnimationFrame
+                    requestAnimationFrame(() => {
+                        if (finalSrc) {
+                            // Ensure the URL is properly quoted for CSS
+                            const bgImageValue = `url("${finalSrc.replace(/"/g, '\\"')}")`;
+                            favicon.style.backgroundImage = bgImageValue;
+                            EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id} RAF] Applied final favicon background-image: ${bgImageValue}`);
+                        } else {
+                             EdgeTabsPlus.logger.warn(`[renderTabs ${tab.id} RAF] No finalSrc determined for ${tab.url}, clearing background-image.`);
+                             favicon.style.backgroundImage = 'none'; // Clear if no source
+                        }
+                    });
                     
                     // Set active state
                     if (tab.active) {
@@ -124,7 +147,10 @@
                     }
                     
                     // Add to fragment
-                    fragment.appendChild(tabItem);
+                    // Check if tab already exists before adding
+                    if (!tabsList.querySelector(`[data-tab-id="${tab.id}"]`)) {
+                        fragment.appendChild(tabItem);
+                    }
                 }
         
                 // Add all tabs to DOM at once
