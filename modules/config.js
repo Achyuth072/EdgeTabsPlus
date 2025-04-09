@@ -5,9 +5,9 @@
     // Add configuration to namespace
     EdgeTabsPlus.config = {
         scroll: {
-            threshold: 50,
+            threshold: 20,  // Lower threshold for more responsive hiding
             debounceTime: 150,
-            transformDuration: '0.3s'
+            transformDuration: '0.2s'  // Slightly faster for better responsiveness
         },
         tabStrip: {
             height: '44px',

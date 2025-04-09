@@ -2,8 +2,7 @@
     window.EdgeTabsPlus = window.EdgeTabsPlus || {};
 
     EdgeTabsPlus.scrollHandler = {
-        lastScrollY: 0,
-        isScrolling: false,
+        lastScrollY: window.scrollY, // Initialize with current scroll position
         isAutoHideEnabled: true, // Default to true as per requirement
         scrollEndTimeout: null,
         lastScrollPosition: 0,
@@ -11,31 +10,73 @@
         scrollTimestamp: 0,
 
         init() {
+            EdgeTabsPlus.logger.addLog('Initializing scroll handler');
+            
+            // Reset state
+            this.lastScrollY = window.scrollY;
+            this.isScrolling = false;
+            
             // Get initial auto-hide state from storage
             chrome.storage.sync.get('autoHide', (result) => {
                 this.isAutoHideEnabled = result.autoHide !== undefined ? result.autoHide : true;
                 EdgeTabsPlus.logger.addLog(`Scroll handler initialized with auto-hide: ${this.isAutoHideEnabled}`);
+                
+                // Ensure initial state is correct
+                const host = document.getElementById('edgetabs-plus-host');
+                if (host && host.shadowRoot) {
+                    const strip = host.shadowRoot.getElementById('edgetabs-plus-strip');
+                    if (strip) {
+                        EdgeTabsPlus.logger.addLog('Found strip during initialization');
+                        if (!this.isAutoHideEnabled) {
+                            strip.classList.remove('hidden');
+                        }
+                    } else {
+                        EdgeTabsPlus.logger.addLog('WARNING: Strip not found during initialization');
+                    }
+                }
             });
+
             this.setupScrollListener();
             this.setupHorizontalScrollListener();
+            
+            EdgeTabsPlus.logger.addLog('Scroll handler initialization complete');
             return this;
         },
 
         setAutoHide(enabled) {
+            EdgeTabsPlus.logger.addLog('Setting auto-hide:', enabled);
             this.isAutoHideEnabled = enabled;
-            const strip = document.getElementById('edgetabs-plus-strip');
-            if (strip) {
-                if (!enabled) {
-                    // Reset position when disabled
-                    strip.classList.remove('hidden');
-                    strip.style.transform = 'translate3d(0,0,0)';
+            
+            const host = document.getElementById('edgetabs-plus-host');
+            if (host && host.shadowRoot) {
+                const strip = host.shadowRoot.getElementById('edgetabs-plus-strip');
+                if (strip) {
+                    EdgeTabsPlus.logger.addLog('Found strip element for auto-hide update');
+                    if (!enabled) {
+                        // Reset position when disabled
+                        strip.classList.remove('hidden');
+                        strip.style.transform = 'translate3d(0,0,0)';
+                        EdgeTabsPlus.logger.addLog('Reset strip position - auto-hide disabled');
+                    }
+                } else {
+                    EdgeTabsPlus.logger.addLog('WARNING: Strip not found for auto-hide update');
                 }
+            } else {
+                EdgeTabsPlus.logger.addLog('WARNING: Host element or shadow root not found');
             }
+            
             EdgeTabsPlus.logger.addLog(`Auto-hide ${enabled ? 'enabled' : 'disabled'}`);
         },
 
         setupScrollListener() {
-            window.addEventListener('scroll', this.handleScroll.bind(this), { passive: true });
+            EdgeTabsPlus.logger.addLog('Setting up scroll listener');
+            const boundHandler = this.handleScroll.bind(this);
+            window.addEventListener('scroll', boundHandler, { passive: true });
+            EdgeTabsPlus.logger.addLog('Scroll listener attached to window');
+            
+            // Initialize with current scroll position
+            this.lastScrollY = window.scrollY;
+            EdgeTabsPlus.logger.addLog(`Initial scroll position: ${this.lastScrollY}`);
         },
 
         setupHorizontalScrollListener() {
@@ -106,29 +147,54 @@
         },
 
         handleScroll() {
-            if (!this.isAutoHideEnabled || !this.isScrolling) {
-                requestAnimationFrame(() => {
-                    const currentScrollY = window.scrollY;
-                    const scrollDelta = currentScrollY - this.lastScrollY;
-                    const strip = document.getElementById('edgetabs-plus-strip');
-
-                    if (strip && Math.abs(scrollDelta) > EdgeTabsPlus.config.scroll.threshold) {
-                        if (this.isAutoHideEnabled) {
-                            requestAnimationFrame(() => {
-                                if (scrollDelta > 0) {
-                                    // Scrolling down - hide
-                                    strip.classList.add('hidden');
-                                } else {
-                                    // Scrolling up - show
-                                    strip.classList.remove('hidden');
-                                }
-                            });
-                        }
-                        this.lastScrollY = currentScrollY;
-                    }
-                });
+            EdgeTabsPlus.logger.addLog('Scroll event fired');
+            
+            // Early return if auto-hide is disabled
+            if (!this.isAutoHideEnabled) {
+                EdgeTabsPlus.logger.addLog('Auto-hide is disabled, ignoring scroll');
+                return;
             }
-            this.isScrolling = false;
+
+            // Get scroll position immediately
+            const currentScrollY = window.scrollY;
+            const scrollDelta = currentScrollY - this.lastScrollY;
+            
+            EdgeTabsPlus.logger.addLog(`Scroll delta: ${scrollDelta}`);
+            
+            // Find the strip element
+            const host = document.getElementById('edgetabs-plus-host');
+            if (!host || !host.shadowRoot) {
+                EdgeTabsPlus.logger.addLog('No host element or shadow root found');
+                return;
+            }
+            
+            const strip = host.shadowRoot.getElementById('edgetabs-plus-strip');
+            if (!strip) {
+                EdgeTabsPlus.logger.addLog('No strip element found');
+                return;
+            }
+
+            const threshold = EdgeTabsPlus.config.scroll.threshold;
+            
+            // Only proceed if we've scrolled enough
+            if (Math.abs(scrollDelta) > threshold) {
+                EdgeTabsPlus.logger.addLog(`Scroll threshold exceeded: ${Math.abs(scrollDelta)} > ${threshold}`);
+                
+                requestAnimationFrame(() => {
+                    if (scrollDelta > 0) {
+                        EdgeTabsPlus.logger.addLog('Scrolling down - hiding strip');
+                        strip.classList.add('hidden');
+                    } else {
+                        EdgeTabsPlus.logger.addLog('Scrolling up - showing strip');
+                        strip.classList.remove('hidden');
+                    }
+                    
+                    EdgeTabsPlus.logger.addLog(`Strip classes after update: ${strip.className}`);
+                });
+                
+                // Update last scroll position
+                this.lastScrollY = currentScrollY;
+            }
         },
 
         handleHorizontalScroll(event) {

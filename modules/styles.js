@@ -292,7 +292,7 @@
                 }
                 
                 /* Essential override to prevent browser from imposing its theme */
-                #edgetabs-plus-strip, .tab-item, .menu-container {
+                #edgetabs-plus-strip, .tab-item {
                     forced-colors: none !important;
                     forced-color-adjust: none !important;
                     -webkit-forced-color-adjust: none !important;
@@ -312,6 +312,7 @@
             return `
                 :host {
                     display: block;
+                    --transform-duration: ${EdgeTabsPlus.config.scroll.transformDuration};
                 }
                 
                 *, *::before, *::after {
@@ -328,12 +329,11 @@
                     letter-spacing: normal;
                     text-transform: none;
                 }
-                
+                /* Base strip styles */
                 #edgetabs-plus-strip {
                     min-height: 40px;
-                    padding: 4px 8px;
-                    transition: opacity 0.3s ease, transform 0.3s ease;
-                    opacity: 1;
+                    padding: 2px 8px;
+                    transition: transform var(--transform-duration, 0.2s) cubic-bezier(0.4, 0, 0.2, 1);
                     transform: translateY(0);
                     z-index: 9999999;
                     display: flex;
@@ -344,39 +344,26 @@
                     background-color: var(--strip-bg);
                     border-top: 1px solid var(--strip-border);
                     box-shadow: 0 -2px 4px var(--strip-shadow);
+                    will-change: transform;
                 }
 
-                :host([hidden]) #edgetabs-plus-strip {
-                    display: none;
-                }
-
-                #edgetabs-plus-strip.transitioning {
-                    transition: opacity 0.3s ease, transform 0.3s ease, display 0s linear 0.3s;
-                }
-
-                #edgetabs-plus-strip:not(.visible) {
-                    opacity: 0;
-                    transform: translateY(100%);
-                }
-
-                /* Auto-hide behavior */
-                #edgetabs-plus-strip {
-                    transition: opacity 0.3s ease, transform 0.3s ease;
-                    transform: translateY(0);
-                    opacity: 1;
-                    will-change: transform, opacity;
-                }
-
+                /* Hide strip when hidden class is present */
                 #edgetabs-plus-strip.hidden {
-                    opacity: 0;
-                    transform: translateY(100%);
+                    transform: translateY(100%) !important;
                     pointer-events: none;
                 }
 
-                /* Disable transitions when auto-hide is disabled */
-                :host([no-auto-hide]) #edgetabs-plus-strip {
-                    transform: translateY(0);
-                    opacity: 1;
+                /* Override hidden state when auto-hide is disabled */
+                :host([no-auto-hide]) #edgetabs-plus-strip,
+                :host([no-auto-hide]) #edgetabs-plus-strip.hidden {
+                    transform: translateY(0) !important;
+                    pointer-events: auto;
+                }
+
+                /* Handle display:none separately */
+                :host([hidden]) #edgetabs-plus-strip {
+                    display: none;
+                }
                 }
                 
                 /* Tabs list and scrolling */

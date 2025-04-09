@@ -48,10 +48,10 @@
         },
 
         setupThemeSync() {
-            // Listen for theme changes from popup/menu
+            // Listen for theme changes
             chrome.runtime.onMessage.addListener((message) => {
-                if (message.action === 'themeChanged') {
-                    this.host.setAttribute('theme', message.theme);
+                if (message.action === 'updateTheme') {
+                    this.host.setAttribute('theme', message.isDark ? 'dark' : 'light');
                     // Add transitioning class
                     this.host.classList.add('theme-transitioning');
                     // Remove it after transition
@@ -108,19 +108,9 @@
             // Create the strip container inside shadow DOM
             const strip = document.createElement('div');
             strip.id = 'edgetabs-plus-strip';
-            strip.style.position = 'fixed';
-            strip.style.bottom = EdgeTabsPlus.config.tabStrip.bottomOffset;
-            strip.style.left = '0';
-            strip.style.width = '100%';
-            strip.style.backgroundColor = EdgeTabsPlus.config.tabStrip.backgroundColor;
-            strip.style.zIndex = '2147483647';
-            strip.style.display = 'flex';
-            strip.style.alignItems = 'center';
-            strip.style.padding = '0 10px';
-            strip.style.height = EdgeTabsPlus.config.tabStrip.height;
-            strip.style.transition = `transform ${EdgeTabsPlus.config.scroll.transformDuration} ease-out`;
-            strip.style.pointerEvents = 'none';
-            strip.style.transform = 'translate3d(0,0,0)';
+            
+            // Let CSS handle all the styling
+            strip.style.setProperty('--strip-bottom-offset', EdgeTabsPlus.config.tabStrip.bottomOffset);
             
             // Add strip to shadow root
             shadow.appendChild(strip);
@@ -198,9 +188,8 @@
                 }
             });
             
-            // Set visibility
-            this.strip.style.visibility = 'visible';
-            this.strip.classList.add('visible');
+            // Initialize without any visibility classes
+            this.strip.classList.remove('hidden');
         },
         
         // Method to ensure the strip is visible with shadow DOM support
@@ -210,9 +199,8 @@
                 
                 if (shouldShow && this.host && this.strip) {
                     // Force display if it should be visible
-                    this.strip.style.display = 'flex';
-                    this.strip.style.visibility = 'visible';
-                    this.strip.classList.add('visible');
+                    // Remove any visibility-related classes
+                    this.strip.classList.remove('hidden');
                     
                     // Check if host element is in document
                     if (!document.body.contains(this.host)) {
