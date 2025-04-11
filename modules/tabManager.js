@@ -3,6 +3,8 @@
 
     EdgeTabsPlus.tabManager = {
         lastTabsState: null,
+        pendingRender: false,
+        tabUpdateQueue: [],
 
         init() {
             this.setupMessageListeners();
@@ -34,7 +36,11 @@
 
         async renderTabs(tabs) {
             try {
-                const tabWidth = this.calculateTabWidth(tabs.length);
+                // Deduplicate tabs by id
+                const uniqueTabs = Array.from(new Map(tabs.map(tab => [tab.id, tab])).values());
+                EdgeTabsPlus.logger.debug(`[renderTabs] Starting render of ${uniqueTabs.length} tabs. Pending: ${this.pendingRender}, Queue size: ${this.tabUpdateQueue.length}`);
+                const tabWidth = this.calculateTabWidth(uniqueTabs.length);
+
                 const tabStrip = document.getElementById('edgetabs-plus-host');
                 if (!tabStrip || !tabStrip.shadowRoot) {
                     EdgeTabsPlus.logger.error('Tab strip or shadow root not found');
@@ -47,15 +53,23 @@
                     return;
                 }
 
-                const fragment = document.createDocumentFragment();
-                
-                // Create template in document context
+                // Ensure styles are loaded
+                EdgeTabsPlus.styles.addLoggerStyles();
+                EdgeTabsPlus.uiComponents.injectStyles();
+
+                // Get current tabs and create a map for quick lookup
+                const currentTabs = Array.from(tabsList.querySelectorAll('.tab-item'));
+                const currentTabsMap = new Map(
+                    currentTabs.map(el => [el.dataset.tabId, el])
+                );
+
+                // Create template for new tabs
                 const template = document.createElement('template');
                 template.innerHTML = `
                     <li class="tab-item">
                         <div class="tab-content">
                             <div class="tab-info">
-                                <div class="tab-favicon"></div> <!-- Changed from img to div -->
+                                <div class="tab-favicon"></div>
                                 <span class="tab-title"></span>
                             </div>
                             <div class="close-button-container">
@@ -64,104 +78,109 @@
                         </div>
                     </li>
                 `.trim();
-                
-                // Clear existing tabs
-                while (tabsList.firstChild) {
-                    tabsList.removeChild(tabsList.firstChild);
-                }
 
-                // Ensure styles are loaded
-                EdgeTabsPlus.styles.addLoggerStyles();
-                EdgeTabsPlus.uiComponents.injectStyles();
-                
-                // Process tabs sequentially
-                for (const tab of tabs) {
-                    // Clone template for each tab
-                    const tabItem = template.content.cloneNode(true).firstElementChild;
-                    const favicon = tabItem.querySelector('.tab-favicon');
-                    const titleSpan = tabItem.querySelector('.tab-title');
+                // Track tabs to remove
+                const tabsToRemove = new Set(currentTabsMap.keys());
+
+                // Process tabs in order
+                for (const [index, tab] of uniqueTabs.entries()) {
+                    const tabId = tab.id.toString();
+                    tabsToRemove.delete(tabId);
                     
-                    // Setup tab item
-                    tabItem.dataset.tabId = tab.id;
-                    
-                    // Set width class
-                    if (tabs.length === 1) {
-                        tabItem.classList.add('single-tab');
-                    } else if (tabs.length >= 5) {
-                        tabItem.classList.add('minimal');
-                    } else {
-                        tabItem.style.setProperty('--tab-width', `${tabWidth}px`);
+                    let tabElement = currentTabsMap.get(tabId);
+                    let isNewTab = false;
+
+                    if (!tabElement) {
+                        // Create new tab if it doesn't exist
+                        tabElement = template.content.cloneNode(true).firstElementChild;
+                        tabElement.dataset.tabId = tabId;
+                        isNewTab = true;
                     }
-                    
-                    // Clean and set title
+
+                    // Update tab width/classes
+                    if (uniqueTabs.length === 1) {
+                        tabElement.classList.add('single-tab');
+                        tabElement.classList.remove('minimal');
+                        tabElement.style.removeProperty('--tab-width');
+                    } else if (uniqueTabs.length >= 5) {
+                        tabElement.classList.remove('single-tab');
+                        tabElement.classList.add('minimal');
+                        tabElement.style.removeProperty('--tab-width');
+                    } else {
+                        tabElement.classList.remove('single-tab', 'minimal');
+                        tabElement.style.setProperty('--tab-width', `${tabWidth}px`);
+                    }
+
+                    // Update active state
+                    tabElement.classList.toggle('active', tab.active);
+
+                    // Update title if changed
+                    const titleSpan = tabElement.querySelector('.tab-title');
                     const cleanTitle = tab.title
                         ?.replace(/ at DuckDuckGo$/i, '')
                         ?.replace(/ - DuckDuckGo$/i, '')
                         ?.split(' - ')[0]
                         ?.trim() || 'New Tab';
-                    titleSpan.textContent = cleanTitle;
                     
-                    // Check cache before attempting to load
-                    EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Checking cache for ${tab.url}`);
-                    const cachedSrc = await EdgeTabsPlus.faviconHandler.getCachedFavicon(tab);
-                    let finalSrc = null; // Variable to hold the determined src
+                    if (titleSpan.textContent !== cleanTitle) {
+                        titleSpan.textContent = cleanTitle;
+                    }
 
+                    // Update favicon if needed
+                    const favicon = tabElement.querySelector('.tab-favicon');
+                    const cachedSrc = await EdgeTabsPlus.faviconHandler.getCachedFavicon(tab);
+                    
                     if (cachedSrc) {
-                        EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Cache hit for ${tab.url}. Determined src: ${cachedSrc}`);
-                        finalSrc = cachedSrc;
-                    } else if (tab.url) { // Only load if not cached and URL exists
-                        EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Cache miss for ${tab.url}. Calling loadFavicon.`);
+                        EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Cache hit for ${tab.url}`);
+                        this.updateFavicon(favicon, cachedSrc, tab);
+                    } else if (tab.url) {
+                        EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Cache miss for ${tab.url}`);
                         try {
                             const loadedSrc = await EdgeTabsPlus.faviconHandler.loadFavicon(tab);
-                            EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] loadFavicon returned: ${loadedSrc}. Determined src.`);
-                            finalSrc = loadedSrc;
+                            this.updateFavicon(favicon, loadedSrc, tab);
                         } catch (error) {
-                            EdgeTabsPlus.logger.error(`[tabManager ${tab.id}] Error loading favicon for ${tab.url}:`, error);
-                            const defaultIcon = EdgeTabsPlus.faviconHandler.getDefaultIcon();
-                            EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Determined default icon due to error: ${defaultIcon}`);
-                            finalSrc = defaultIcon; // Correct reference
+                            EdgeTabsPlus.logger.error(`[tabManager ${tab.id}] Error loading favicon:`, error);
+                            this.updateFavicon(favicon, EdgeTabsPlus.faviconHandler.getDefaultIcon(), tab);
                         }
                     } else {
-                        // Handle tabs with no URL (shouldn't happen for edge://newtab)
-                        const defaultIcon = EdgeTabsPlus.faviconHandler.getDefaultIcon();
-                        EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] No URL found. Determined default icon: ${defaultIcon}`);
-                        finalSrc = defaultIcon;
+                        this.updateFavicon(favicon, EdgeTabsPlus.faviconHandler.getDefaultIcon(), tab);
                     }
 
-                    // Apply the background-image slightly later using requestAnimationFrame
-                    requestAnimationFrame(() => {
-                        if (finalSrc) {
-                            // Ensure the URL is properly quoted for CSS
-                            const bgImageValue = `url("${finalSrc.replace(/"/g, '\\"')}")`;
-                            favicon.style.backgroundImage = bgImageValue;
-                            EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id} RAF] Applied final favicon background-image: ${bgImageValue}`);
-                        } else {
-                             EdgeTabsPlus.logger.warn(`[renderTabs ${tab.id} RAF] No finalSrc determined for ${tab.url}, clearing background-image.`);
-                             favicon.style.backgroundImage = 'none'; // Clear if no source
-                        }
-                    });
-                    
-                    // Set active state
-                    if (tab.active) {
-                        tabItem.classList.add('active');
-                    }
-                    
-                    // Add to fragment
-                    // Check if tab already exists before adding
-                    if (!tabsList.querySelector(`[data-tab-id="${tab.id}"]`)) {
-                        fragment.appendChild(tabItem);
+                    if (isNewTab) {
+                        // Find the correct position to insert the new tab
+                        const nextTabId = uniqueTabs[index + 1]?.id;
+                        const nextElement = nextTabId ? tabsList.querySelector(`[data-tab-id="${nextTabId}"]`) : null;
+                        tabsList.insertBefore(tabElement, nextElement);
                     }
                 }
-        
-                // Add all tabs to DOM at once
-                tabsList.appendChild(fragment);
-                
-                // Update UI state
+
+                // Remove tabs that are no longer present
+                for (const tabId of tabsToRemove) {
+                    const element = currentTabsMap.get(tabId);
+                    if (element && element.parentNode === tabsList) {
+                        tabsList.removeChild(element);
+                    }
+                }
+
+                // Update UI state and log completion
                 this.updateMinimalTabs();
+                EdgeTabsPlus.logger.debug(`[renderTabs] Completed render of ${uniqueTabs.length} tabs successfully`);
                 this.updateScrollIndicators();
             } catch (error) {
                 EdgeTabsPlus.logger.error('Failed to render tabs:', error);
             }
+        },
+
+        updateFavicon(faviconElement, src, tab) {
+            if (!faviconElement || !src) return;
+            
+            requestAnimationFrame(() => {
+                const bgImageValue = `url("${src.replace(/"/g, '\\"')}")`;
+                if (faviconElement.style.backgroundImage !== bgImageValue) {
+                    faviconElement.style.backgroundImage = bgImageValue;
+                    EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Updated favicon: ${bgImageValue}`);
+                }
+            });
         },
 
         updateScrollIndicators() {
@@ -200,11 +219,9 @@
             // Setup message listener for tab updates
             chrome.runtime.onMessage.addListener((message) => {
                 if (message.action === 'tabsUpdated' && message.tabs) {
-                    const newState = JSON.stringify(message.tabs);
-                    if (newState !== this.lastTabsState) {
-                        this.lastTabsState = newState;
-                        this.renderTabs(message.tabs);
-                    }
+                    // Queue this update
+                    EdgeTabsPlus.logger.debug(`Queueing tab update with ${message.tabs.length} tabs`);
+                    this.queueTabUpdate(message.tabs);
                 }
             });
 
@@ -236,6 +253,57 @@
 
         requestInitialTabs() {
             chrome.runtime.sendMessage({ action: 'getTabs' });
+        },
+
+        queueTabUpdate(tabs) {
+            // Add to queue
+            this.tabUpdateQueue.push(tabs);
+            
+            // Process queue if no render is pending
+            if (!this.pendingRender) {
+                this.processNextUpdate();
+            }
+        },
+
+        processNextUpdate() {
+            if (this.tabUpdateQueue.length === 0) {
+                this.pendingRender = false;
+                return;
+            }
+
+            this.pendingRender = true;
+            
+            // Get most recent update
+            const tabs = this.tabUpdateQueue.pop();
+            // Clear queue since we're using most recent state
+            this.tabUpdateQueue = [];
+
+            // Deduplicate tabs
+            const uniqueTabs = Array.from(new Map(tabs.map(tab => [tab.id, tab])).values());
+            const newState = JSON.stringify(uniqueTabs);
+
+            if (newState !== this.lastTabsState) {
+                EdgeTabsPlus.logger.debug(`Processing ${uniqueTabs.length} deduplicated tabs`);
+                this.lastTabsState = newState;
+                
+                // Use requestAnimationFrame to ensure we're in sync with browser's render cycle
+                requestAnimationFrame(() => {
+                    this.renderTabs(uniqueTabs).finally(() => {
+                        this.pendingRender = false;
+                        // Process any updates that came in while we were rendering
+                        if (this.tabUpdateQueue.length > 0) {
+                            this.processNextUpdate();
+                        }
+                    });
+                });
+            } else {
+                EdgeTabsPlus.logger.debug('Ignoring duplicate tabs update');
+                this.pendingRender = false;
+                // Check for more updates
+                if (this.tabUpdateQueue.length > 0) {
+                    this.processNextUpdate();
+                }
+            }
         }
     };
 })();

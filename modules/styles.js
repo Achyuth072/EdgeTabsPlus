@@ -11,7 +11,8 @@
                 scrolling: this.getScrollingStyles(),
                 additional: this.getAdditionalStyles(),
                 colorScheme: this.getColorSchemeStyles(),
-                logger: this.getLoggerStyles()
+                logger: this.getLoggerStyles(),
+                toggle: this.getToggleStyles()
             };
             
             // Add styles to document for theme variables
@@ -29,6 +30,7 @@
                 ${this.styles.additional}
                 ${this.styles.colorScheme}
                 ${this.styles.logger}
+                ${this.styles.toggle}
             `;
         },
 
@@ -1119,6 +1121,98 @@
 
                     .close-tab {
                         color: ButtonText;
+                    }
+                }
+            `;
+        },        getToggleStyles() {
+            return `
+                /* Toggle button styling */
+                .strip-toggle-btn {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 28px;
+                    height: 28px;
+                    background: transparent;
+                    border: none;
+                    cursor: pointer;
+                    color: var(--tab-text);
+                    font-size: 18px;
+                    font-weight: bold;
+                    line-height: 1;
+                    transition: all 0.2s ease;
+                    margin-right: 8px;
+                    z-index: 10;
+                    padding: 0;
+                    align-self: center; /* Center vertically within the flex container */
+                }
+
+                .strip-toggle-btn:hover {
+                    color: var(--add-btn-hover-color);
+                }
+
+                .strip-toggle-btn:active {
+                    transform: scale(0.95);
+                }                /* Collapsed state styles */
+                #edgetabs-plus-strip.collapsed {
+                    height: auto;
+                    min-height: 0;
+                    background: transparent !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    padding: 0;
+                    overflow: visible;
+                    pointer-events: none;
+                }
+
+                /* Hide all elements except the toggle button in collapsed state */
+                #edgetabs-plus-strip.collapsed > *:not(.strip-toggle-btn) {
+                    display: none !important;
+                }
+                
+                /* Transition effects for collapsing/expanding */
+                #edgetabs-plus-strip.transitioning > *:not(.strip-toggle-btn) {
+                    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                }
+                
+                /* Ensure toggle button is always visible and clickable */
+                .strip-toggle-btn {
+                    transform: translateY(0) !important;
+                    opacity: 1 !important;
+                    pointer-events: auto !important;
+                }
+                  /* Special styling for collapsed state toggle button */
+                #edgetabs-plus-strip.collapsed .strip-toggle-btn {
+                    position: fixed;
+                    bottom: 10px;
+                    left: 10px;
+                    margin: 0;
+                    background-color: transparent;
+                    z-index: 9999999;
+                }
+                
+                /* Fix for toggle button position during scrolling */
+                .strip-toggle-btn {
+                    position: relative;
+                    transform: none !important;
+                    will-change: transform;
+                }
+                
+                /* Adjust for mobile devices */
+                @media (pointer: coarse) {
+                    .strip-toggle-btn {
+                        width: 34px;
+                        height: 34px;
+                        font-size: 18px;
+                    }
+                    
+                    .strip-toggle-btn::after {
+                        content: '';
+                        position: absolute;
+                        top: -4px;
+                        left: -4px;
+                        right: -4px;
+                        bottom: -4px;
                     }
                 }
             `;

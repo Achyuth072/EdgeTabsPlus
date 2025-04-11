@@ -21,6 +21,11 @@
             this.addButton = this.createAddButton();
             this.setupStrip();
             
+            // Initialize toggle button functionality (if available)
+            if (EdgeTabsPlus.toggleButton) {
+                EdgeTabsPlus.toggleButton.init();
+            }
+            
             // Add additional check to ensure strip visibility
             this.ensureStripVisibility();
             
