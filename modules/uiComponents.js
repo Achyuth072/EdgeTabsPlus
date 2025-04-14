@@ -7,18 +7,21 @@
         addButton: null,
         addButtonContainer: null,
 
-        init() {
+        async init() {
             const { host, strip, shadow } = this.createTabStrip();
             this.host = host;
             this.strip = strip;
             this.shadow = shadow;
             
-            // Create and inject styles into shadow DOM
-            this.injectStyles();
+            // Create and inject styles into shadow DOM - wait for completion
+            await this.injectStyles();
             
             this.tabsList = this.createTabsList();
             this.addButtonContainer = this.createAddButtonContainer();
             this.addButton = this.createAddButton();
+            
+            // Wait for next frame to ensure styles are applied before setup
+            await new Promise(resolve => requestAnimationFrame(resolve));
             this.setupStrip();
             
             // Initialize toggle button functionality (if available)
@@ -33,23 +36,36 @@
         },
 
         injectStyles() {
-            if (!this.shadow) return;
+            if (!this.shadow) return Promise.reject(new Error('Shadow DOM not initialized'));
 
-            // Remove any existing styles
-            const existingStyle = this.shadow.querySelector('style');
-            if (existingStyle) {
-                existingStyle.remove();
-            }
+            return new Promise((resolve) => {
+                // Update existing style or create new one
+                let styleElement = this.shadow.querySelector('style#edgetabs-styles');
+                if (!styleElement) {
+                    styleElement = document.createElement('style');
+                    styleElement.id = 'edgetabs-styles';
+                }
 
-            const style = document.createElement('style');
-            
-            // Get all styles from EdgeTabsPlus.styles
-            style.textContent = EdgeTabsPlus.styles.getStyles();
-            
-            this.shadow.appendChild(style);
+                // Get complete styles including logger styles
+                styleElement.textContent = EdgeTabsPlus.styles.getStyles();
+                
+                // Insert immediately if not already in shadow DOM
+                if (!this.shadow.contains(styleElement)) {
+                    this.shadow.prepend(styleElement);
+                }
+                
+                // Force a reflow for immediate style application
+                void this.shadow.offsetHeight;
 
-            // Set up theme sync
-            this.setupThemeSync();
+                // Initialize theme sync on first injection
+                if (!this._themeSyncInitialized) {
+                    this.setupThemeSync();
+                    this._themeSyncInitialized = true;
+                }
+
+                // Allow a brief moment for styles to be parsed and applied
+                setTimeout(resolve, 50);
+            });
         },
 
         setupThemeSync() {

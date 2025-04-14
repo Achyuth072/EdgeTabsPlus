@@ -53,9 +53,8 @@
                     return;
                 }
 
-                // Ensure styles are loaded
-                EdgeTabsPlus.styles.addLoggerStyles();
-                EdgeTabsPlus.uiComponents.injectStyles();
+                // Skip redundant style injection since styles are already loaded
+                // during initialization
 
                 // Get current tabs and create a map for quick lookup
                 const currentTabs = Array.from(tabsList.querySelectorAll('.tab-item'));
@@ -147,10 +146,25 @@
                     }
 
                     if (isNewTab) {
-                        // Find the correct position to insert the new tab
-                        const nextTabId = uniqueTabs[index + 1]?.id;
-                        const nextElement = nextTabId ? tabsList.querySelector(`[data-tab-id="${nextTabId}"]`) : null;
-                        tabsList.insertBefore(tabElement, nextElement);
+                        // Ensure styles are applied before inserting tab
+                        requestAnimationFrame(() => {
+                            // Set initial invisible state
+                            tabElement.style.opacity = '0';
+                            
+                            // Find the correct position to insert the new tab
+                            const nextTabId = uniqueTabs[index + 1]?.id;
+                            const nextElement = nextTabId ? tabsList.querySelector(`[data-tab-id="${nextTabId}"]`) : null;
+                            tabsList.insertBefore(tabElement, nextElement);
+
+                            // Force a reflow to ensure styles are applied
+                            void tabElement.offsetHeight;
+
+                            // Make visible with transition
+                            requestAnimationFrame(() => {
+                                tabElement.style.transition = 'opacity 0.2s ease-in-out';
+                                tabElement.style.opacity = '1';
+                            });
+                        });
                     }
                 }
 

@@ -15,9 +15,13 @@
             // Log initialization started
             console.log('Starting EdgeTabs+ initialization...');
             
-            // Initialize core modules in dependency order
+            // Initialize styles first
             EdgeTabsPlus.styles.init();
-            EdgeTabsPlus.uiComponents.init();
+            
+            // Initialize UI components and wait for styles to be ready
+            await EdgeTabsPlus.uiComponents.init();
+            
+            // Initialize logger after UI is ready
             EdgeTabsPlus.logger.init();
 
             // After logger is ready, use it for subsequent logs
@@ -139,8 +143,7 @@
                     host.setAttribute('theme', message.theme);
                     window.EdgeTabsPlus.currentTheme = message.theme;
                     
-                    // Ensure styles are updated
-                    EdgeTabsPlus.styles.addLoggerStyles();
+                    // Update styles through UI components only
                     EdgeTabsPlus.uiComponents.injectStyles();
                     
                     // Force layout recalculation

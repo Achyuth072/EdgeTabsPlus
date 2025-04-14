@@ -321,10 +321,14 @@
                     box-sizing: border-box;
                 }
                 
-                #edgetabs-plus-strip,
-                #edgetabs-plus-strip *:not(.close-tab):not(#add-tab) {
+                /* Base styles for all elements */
+                #edgetabs-plus-strip {
                     pointer-events: auto;
                     touch-action: auto;
+                }
+
+                /* Typography for text elements */
+                #edgetabs-plus-strip *:not(.close-tab):not(.tab-favicon):not(#add-tab) {
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
                     font-size: 14px;
                     font-weight: normal;
@@ -439,6 +443,76 @@
                 }
 
                 /* Tab item styling */
+                /* Base favicon styles */
+                .tab-favicon {
+                    width: 20px !important;
+                    height: 20px !important;
+                    background-size: contain !important;
+                    background-repeat: no-repeat !important;
+                    background-position: center !important;
+                    flex-shrink: 0 !important;
+                    display: inline-block !important;
+                    min-width: 18px !important;
+                    min-height: 18px !important;
+                }
+
+                /* Close button base styles */
+                .close-tab {
+                    width: 20px !important;
+                    height: 20px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    background: transparent !important;
+                    border: none !important;
+                    border-radius: 50% !important;
+                    color: var(--tab-text) !important;
+                    font-size: 16px !important;
+                    font-weight: 700 !important;
+                    line-height: 1 !important;
+                    cursor: pointer !important;
+                    opacity: 0.85 !important;
+                    position: relative !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    transition: opacity 0.2s ease, background-color 0.2s ease !important;
+                }
+
+                .close-tab:hover {
+                    opacity: 1;
+                    background-color: var(--tab-hover-bg);
+                }
+
+                /* Ensure minimum touch target size for mobile */
+                /* Expanded touch target without affecting visual size */
+                .close-tab::after {
+                    content: '';
+                    position: absolute;
+                    top: -13px;
+                    right: -13px;
+                    bottom: -13px;
+                    left: -13px;
+                }
+
+                /* Android-specific optimizations */
+                @media screen and (-webkit-min-device-pixel-ratio: 0) {
+                    .tab-favicon {
+                        /* Force hardware acceleration */
+                        transform: translateZ(0);
+                        backface-visibility: hidden;
+                        -webkit-backface-visibility: hidden;
+                    }
+
+                    .close-tab {
+                        /* Use system font for better rendering */
+                        font-family: system-ui, -apple-system, sans-serif;
+                        /* Adjust line-height for better centering */
+                        line-height: 16px;
+                        /* Disable animations on Android */
+                        transition: none;
+                    }
+                }
+
                 .tab-item {
                     position: relative;
                     height: 38px; /* Increased from 32px */
@@ -465,8 +539,8 @@
                     align-items: center;
                     justify-content: space-between;
                     height: 100%;
-                    padding: 0 6px 0 10px; /* Adjusted padding for better spacing */
-                    gap: 8px;
+                    padding: 0 8px 0 12px; /* Increased padding for better spacing */
+                    gap: 10px; /* Increased gap for better separation */
                 }
     
                 .tab-info {
@@ -498,14 +572,27 @@
                 }
 
                 /* Tab hover effects */
-                .tab-item:hover {
+                /* Tab hover/active states with isolation */
+                #edgetabs-plus-strip .tab-item:hover {
                     background: var(--tab-hover-bg);
                     transform: translateY(-1px);
                     box-shadow: 0 2px 4px var(--tab-shadow);
                 }
 
-                .tab-item:active {
+                #edgetabs-plus-strip .tab-item:hover .tab-content,
+                #edgetabs-plus-strip .tab-item:hover .tab-favicon,
+                #edgetabs-plus-strip .tab-item:hover .close-tab {
+                    transform: none !important;
+                }
+
+                #edgetabs-plus-strip .tab-item:active {
                     transform: scale(0.98);
+                }
+
+                #edgetabs-plus-strip .tab-item:active .tab-content,
+                #edgetabs-plus-strip .tab-item:active .tab-favicon,
+                #edgetabs-plus-strip .tab-item:active .close-tab {
+                    transform: none !important;
                 }
 
                 /* Close button container */
@@ -513,41 +600,69 @@
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    width: 24px;
-                    height: 24px;
-                }
-    
-                /* Close button styling */
-                .close-tab {
                     width: 20px;
                     height: 20px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: transparent;
-                    border: none;
-                    border-radius: 50%;
-                    padding: 0;
-                    margin: 0;
-                    font-size: 14px;
-                    font-weight: 700;
-                    line-height: 1;
-                    color: var(--tab-text);
-                    opacity: 0.7;
-                    cursor: pointer;
-                    -webkit-tap-highlight-color: transparent;
-                    transition: all 0.2s ease;
                 }
     
-                .close-tab:hover {
-                    opacity: 1;
-                    background-color: var(--tab-hover-bg);
+                /* Critical styles for close button - maximum specificity */
+                :host #edgetabs-plus-strip .tab-item .tab-content .close-button-container .close-tab {
+                    width: 20px !important;
+                    height: 20px !important;
+                    border: none !important;
+                    background: transparent !important;
+                    color: var(--tab-text) !important;
+                    font-size: 18px !important;
+                    font-weight: 700 !important;
+                    line-height: 1 !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    cursor: pointer !important;
+                    opacity: 0.85 !important;
+                    border-radius: 50% !important;
+                    position: relative !important;
+                    z-index: 1 !important;
+                    -webkit-tap-highlight-color: transparent !important;
+                    transition: opacity 0.2s ease !important;
                 }
-    
-                /* Touch feedback */
-                .close-tab:active {
-                    background-color: var(--tab-hover-bg);
-                    transform: scale(0.95);
+    /* Close button interactions for desktop */
+    @media (hover: hover) and (pointer: fine) {
+        #edgetabs-plus-strip .tab-item .tab-content .close-button-container .close-tab:hover {
+            opacity: 1 !important;
+            background-color: var(--tab-hover-bg) !important;
+        }
+    }
+
+    /* Touch feedback without transforms */
+    #edgetabs-plus-strip .tab-item .tab-content .close-button-container .close-tab:active {
+        opacity: 1 !important;
+        background-color: rgba(0, 0, 0, 0.1) !important;
+    }
+
+    /* Android-specific touch optimizations */
+    @supports (-webkit-tap-highlight-color: transparent) {
+        #edgetabs-plus-strip .tab-item .tab-content .close-button-container .close-tab {
+            /* Increase touch target while keeping visual size */
+            position: relative !important;
+        }
+
+        #edgetabs-plus-strip .tab-item .tab-content .close-button-container .close-tab::after {
+            content: '' !important;
+            position: absolute !important;
+            top: -12px !important;
+            right: -12px !important;
+            bottom: -12px !important;
+            left: -12px !important;
+            z-index: 1 !important;
+        }
+    }
+                }
+
+                /* Ensure tab-content doesn't transform */
+                #edgetabs-plus-strip .tab-item .tab-content {
+                    transform: none !important;
                 }
     
                 /* Ensure text doesn't overflow */
@@ -559,15 +674,28 @@
                 }
     
                 /* Favicon sizing & styling (using background-image) */
-                .tab-favicon {
-                    flex-shrink: 0;
-                    width: 20px; /* Match previous size or desired size */
-                    height: 20px;
-                    background-size: contain; /* Or 'cover' */
-                    background-repeat: no-repeat;
-                    background-position: center;
-                    /* Optional: Add a default background color or placeholder */
-                    /* background-color: rgba(0,0,0,0.1); */
+                /* Critical styles for favicon - maximum specificity */
+                :host #edgetabs-plus-strip .tab-item .tab-content .tab-info .tab-favicon {
+                    flex-shrink: 0 !important;
+                    width: 20px !important;
+                    height: 20px !important;
+                    background-size: contain !important;
+                    background-repeat: no-repeat !important;
+                    background-position: center !important;
+                    margin-right: 8px !important;
+                    display: inline-block !important;
+                    /* Control box model */
+                    box-sizing: content-box !important;
+                    /* Ensure consistent sizing */
+                    min-width: 20px !important;
+                    min-height: 20px !important;
+                    max-width: 20px !important;
+                    max-height: 20px !important;
+                    /* Reset spacing */
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    /* Remove transforms */
+                    transform: none !important;
                 }
 
                 /* Larger touch target for mobile */
@@ -674,13 +802,24 @@
                     width: 90px;
                     flex: 0 0 90px;
                 }
-                
-                .tab-item.minimal div:not(.close-tab) {
-                    max-width: 24px; /* Only show favicon */
+
+                .tab-item.minimal .tab-content {
+                    justify-content: space-between;
+                    padding: 0 8px; /* Consistent padding */
                 }
                 
-                .tab-item.minimal span:not(.close-tab) {
+                .tab-item.minimal .tab-info {
+                    justify-content: flex-start;
+                    gap: 4px; /* Reduced gap in minimal state */
+                }
+
+                .tab-item.minimal .tab-title {
                     display: none; /* Hide text completely */
+                }
+
+                .tab-item.minimal .tab-favicon {
+                    margin: 0;
+                    flex-shrink: 0; /* Prevent favicon from shrinking */
                 }
             `;
         },
@@ -721,8 +860,8 @@
 
                 .tab-item.minimal .tab-favicon {
                     margin: 0;
-                    width: 24px; /* Larger favicon for minimal state */
-                    height: 24px;
+                    width: 18px; /* Maintain consistent size in minimal state */
+                    height: 18px;
                 }
 
                 /* Single tab state */
@@ -755,8 +894,8 @@
                 /* Touch device optimizations */
                 @media (pointer: coarse) {
                     .tab-item.minimal .tab-favicon {
-                        width: 28px; /* Even larger for touch devices */
-                        height: 28px;
+                        width: 18px; /* Maintain consistent size on touch devices */
+                        height: 18px;
                     }
                 }
             `;
@@ -897,12 +1036,22 @@
                     .tabs-list::after {
                         width: 30px;
                     }
-                    
+                    /* Ensure minimum touch target size while preserving visual size */
                     .close-tab {
-                        width: 34px;
-                        height: 34px;
-                        min-width: 44px; /* Ensure minimum touch target size */
+                        position: relative;
+                        min-width: 44px;
                         min-height: 44px;
+                        padding: 10px; /* Create space around the button for touch target */
+                    }
+
+                    .close-tab::after {
+                        content: '';
+                        position: absolute;
+                        top: -10px;
+                        right: -10px;
+                        bottom: -10px;
+                        left: -10px;
+                    }
                     }
                     
                     .tab-item:active {
@@ -1057,13 +1206,14 @@
                 }
                 
                 /* Close button styling */
-                .close-tab {
-                    color: var(--tab-text) !important;
-                    opacity: 0.7;
-                }
                 
                 .close-tab:hover {
                     opacity: 1;
+                    transform: scale(1.1);
+                }
+
+                .close-tab:active {
+                    transform: scale(0.9);
                 }
             `;
             document.head.appendChild(style);

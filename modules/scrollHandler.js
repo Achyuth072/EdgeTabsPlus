@@ -147,19 +147,14 @@
         },
 
         handleScroll() {
-            EdgeTabsPlus.logger.addLog('Scroll event fired');
-            
             // Early return if auto-hide is disabled
             if (!this.isAutoHideEnabled) {
-                EdgeTabsPlus.logger.addLog('Auto-hide is disabled, ignoring scroll');
                 return;
             }
 
             // Get scroll position immediately
             const currentScrollY = window.scrollY;
             const scrollDelta = currentScrollY - this.lastScrollY;
-            
-            EdgeTabsPlus.logger.addLog(`Scroll delta: ${scrollDelta}`);
             
             // Find the strip element
             const host = document.getElementById('edgetabs-plus-host');
@@ -178,18 +173,12 @@
             
             // Only proceed if we've scrolled enough
             if (Math.abs(scrollDelta) > threshold) {
-                EdgeTabsPlus.logger.addLog(`Scroll threshold exceeded: ${Math.abs(scrollDelta)} > ${threshold}`);
-                
                 requestAnimationFrame(() => {
                     if (scrollDelta > 0) {
-                        EdgeTabsPlus.logger.addLog('Scrolling down - hiding strip');
                         strip.classList.add('hidden');
                     } else {
-                        EdgeTabsPlus.logger.addLog('Scrolling up - showing strip');
                         strip.classList.remove('hidden');
                     }
-                    
-                    EdgeTabsPlus.logger.addLog(`Strip classes after update: ${strip.className}`);
                 });
                 
                 // Update last scroll position
@@ -319,8 +308,6 @@
                 tab.style.scrollSnapAlign = 'center';
                 tab.style.scrollSnapStop = 'always';
             });
-            
-            EdgeTabsPlus.logger.addLog('Enhanced scroll snap behavior applied');
             
             // Initial indicator update
             this.updateScrollIndicators(tabsList);
