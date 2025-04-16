@@ -13,7 +13,9 @@
         touchStartDirection: null,
         isHorizontalScroll: false,
         touchPositions: [],
-        maxVelocityCapture: 5,
+        maxVelocityCapture: 10,
+        currentOffset: 0,
+        transformRAF: null,
 
         init() {
             // Initialize timing properties
@@ -122,9 +124,8 @@
             if (deltaTime < 16) return;
             
             const x = e.pageX;
-            const deltaX = this.lastX - x;
             
-            // Store position for velocity calculation (keep last 5 positions)
+            // Store position for velocity calculation
             this.touchPositions.push({
                 x: x,
                 time: currentTime
@@ -134,8 +135,18 @@
                 this.touchPositions.shift();
             }
             
-            // Update scroll position
-            tabsList.scrollLeft = this.scrollLeft + (this.startX - x);
+            // Calculate and update visual position using transform
+            this.currentOffset = this.startX - x;
+            
+            // Use RAF for smooth visual updates
+            cancelAnimationFrame(this.transformRAF);
+            this.transformRAF = requestAnimationFrame(() => {
+                const clampedOffset = Math.max(0, Math.min(
+                    this.currentOffset,
+                    tabsList.scrollWidth - tabsList.clientWidth
+                ));
+                tabsList.style.transform = `translateX(${-clampedOffset}px)`;
+            });
             
             // Update tracking
             this.lastX = x;
@@ -149,8 +160,23 @@
             const tabsList = EdgeTabsPlus.uiComponents.tabsList;
             if (!tabsList) return;
             
+            // Cancel transform animation
+            cancelAnimationFrame(this.transformRAF);
+            
+            // Reset transform
+            tabsList.style.transform = '';
+            
             // Calculate final velocity from stored positions
             this.calculateFinalVelocity();
+            
+            // Calculate final scroll position
+            const finalScrollLeft = Math.max(0, Math.min(
+                this.scrollLeft + this.currentOffset,
+                tabsList.scrollWidth - tabsList.clientWidth
+            ));
+            
+            // Set final scroll position
+            tabsList.scrollLeft = finalScrollLeft;
             
             // Apply momentum if velocity is high enough
             if (Math.abs(this.velocity) > 0.5) {
@@ -160,6 +186,9 @@
                 tabsList.style.scrollBehavior = 'smooth';
                 EdgeTabsPlus.scrollHandler.snapToNearestTabAfterScroll(tabsList);
             }
+            
+            // Reset offset
+            this.currentOffset = 0;
             
             // Clean up
             tabsList.classList.remove('grabbing');
@@ -221,10 +250,9 @@
             
             // Only process horizontal scrolling
             if (this.isHorizontalScroll) {
-                const deltaX = this.lastX - x;
                 const deltaTime = currentTime - this.lastTime;
                 
-                // Store position data for momentum calculation (keep last 5 positions)
+                // Store position data for momentum calculation
                 this.touchPositions.push({
                     x: x,
                     time: currentTime
@@ -237,8 +265,18 @@
                 // Skip if too soon (prevent oversampling)
                 if (deltaTime < 16) return;
                 
-                // Apply movement
-                tabsList.scrollLeft += deltaX * 1.0; // Multiplier for better tracking
+                // Calculate and update visual position using transform
+                this.currentOffset = this.startX - x;
+                
+                // Use RAF for smooth visual updates
+                cancelAnimationFrame(this.transformRAF);
+                this.transformRAF = requestAnimationFrame(() => {
+                    const clampedOffset = Math.max(0, Math.min(
+                        this.currentOffset,
+                        tabsList.scrollWidth - tabsList.clientWidth
+                    ));
+                    tabsList.style.transform = `translateX(${-clampedOffset}px)`;
+                });
                 
                 // Update tracking variables
                 this.lastX = x;
@@ -259,8 +297,23 @@
                     return;
                 }
                 
+                // Cancel transform animation
+                cancelAnimationFrame(this.transformRAF);
+                
+                // Reset transform
+                tabsList.style.transform = '';
+                
                 // Calculate final velocity based on touch history
                 this.calculateFinalVelocity();
+                
+                // Calculate final scroll position
+                const finalScrollLeft = Math.max(0, Math.min(
+                    this.scrollLeft + this.currentOffset,
+                    tabsList.scrollWidth - tabsList.clientWidth
+                ));
+                
+                // Set final scroll position
+                tabsList.scrollLeft = finalScrollLeft;
                 
                 // Apply momentum if velocity is high enough
                 if (Math.abs(this.velocity) > 0.5) {
@@ -270,6 +323,9 @@
                     tabsList.style.scrollBehavior = 'smooth';
                     EdgeTabsPlus.scrollHandler.snapToNearestTabAfterScroll(tabsList);
                 }
+                
+                // Reset offset
+                this.currentOffset = 0;
             }
             
             this.isDragging = false;

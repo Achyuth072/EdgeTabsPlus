@@ -801,6 +801,7 @@
                 .tab-item.minimal {
                     width: 90px;
                     flex: 0 0 90px;
+                    transition: none !important; /* Disable transition for minimal state */
                 }
 
                 .tab-item.minimal .tab-content {
@@ -848,6 +849,7 @@
                 .tab-item.minimal {
                     width: 90px;
                     flex: 0 0 90px;
+                    transition: none !important; /* Disable transition for minimal state */
                 }
 
                 .tab-item.minimal .tab-info {
