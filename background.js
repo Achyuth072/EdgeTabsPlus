@@ -1,3 +1,6 @@
+// Shared state
+let sharedLastScrollPosition = 0;
+
 // Debounce helper
 let notifyTimeout = null;
 const DEBOUNCE_DELAY = 50; // 50ms debounce delay
@@ -26,7 +29,8 @@ function notifyTabsUpdated(immediate = false) {
                     // Fix: Use chrome.tabs.sendMessage instead of chrome.runtime.sendMessage
                     chrome.tabs.sendMessage(tab.id, {
                         action: 'tabsUpdated',
-                        tabs: tabData
+                        tabs: tabData,
+                        sharedScrollPosition: sharedLastScrollPosition
                     }).catch(err => {
                         // Only log actual errors, not disconnected port errors
                         if (!err.message.includes('receiving end does not exist')) {
@@ -64,6 +68,9 @@ async function getFaviconUrl(tabId) {
 // Handle tab creation with delay and error handling
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch(request.action) {
+        case 'UPDATE_SCROLL_POSITION':
+            sharedLastScrollPosition = request.position;
+            break;
         case 'closeTab':
             chrome.tabs.remove(request.tabId)
                 .then(() => notifyTabsUpdated())

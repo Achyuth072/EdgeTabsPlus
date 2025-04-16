@@ -127,23 +127,13 @@
             }, { passive: true });
             
             // Also monitor touchend to handle scroll snap even with small movements
-            tabsList.addEventListener('touchend', () => {
-                if (Math.abs(this.scrollVelocity) < 0.2) {
-                    // If almost no velocity, immediately snap
-                    clearTimeout(this.scrollEndTimeout);
-                    setTimeout(() => {
-                        this.snapToNearestTabAfterScroll(tabsList);
-                    }, 50);
-                }
-            }, { passive: true });
+            // Disabled touchend snap behavior to allow manual scroll persistence
+            tabsList.addEventListener('touchend', () => {}, { passive: true });
         },
 
         handleScrollEnd(tabsList) {
-            // Don't compete with momentum scrolling from touchHandler
-            if (!EdgeTabsPlus.touchHandler.isDragging && 
-                Math.abs(this.scrollVelocity) < 0.5) {
-                this.snapToNearestTabAfterScroll(tabsList);
-            }
+            // Disabled auto-scroll handling to allow manual scroll persistence
+            return;
         },
 
         handleScroll() {
@@ -220,52 +210,8 @@
         },
 
         snapToNearestTabAfterScroll(tabsList) {
-            if (!tabsList || EdgeTabsPlus.touchHandler.isDragging) return;
-            
-            const scrollPosition = tabsList.scrollLeft;
-            const tabItems = tabsList.querySelectorAll('.tab-item');
-            
-            if (!tabItems.length) return;
-            
-            let closestTab = null;
-            let minDistance = Infinity;
-            
-            // Find the tab closest to the current scroll position
-            tabItems.forEach(tab => {
-                const tabLeft = tab.offsetLeft;
-                const tabCenter = tabLeft + (tab.offsetWidth / 2);
-                const scrollCenter = scrollPosition + (tabsList.clientWidth / 2);
-                const distance = Math.abs(tabCenter - scrollCenter);
-                
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestTab = tab;
-                }
-            });
-            
-            if (closestTab) {
-                // Get position to center the tab in view
-                const tabLeft = closestTab.offsetLeft;
-                const tabWidth = closestTab.offsetWidth;
-                const targetScroll = tabLeft - ((tabsList.clientWidth - tabWidth) / 2);
-                
-                // Only snap if we're not too close to the target already (to avoid jitter)
-                if (Math.abs(tabsList.scrollLeft - targetScroll) > 5) {
-                    const isAppleMobile = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                    
-                    // Smoother snapping animation for iOS
-                    if (isAppleMobile) {
-                        // For iOS we need a more controlled animation
-                        this.smoothScrollTo(tabsList, targetScroll);
-                    } else {
-                        // For other browsers, use native smooth scrolling
-                        tabsList.scrollTo({
-                            left: targetScroll,
-                            behavior: 'smooth'
-                        });
-                    }
-                }
-            }
+            // Disabled auto-scroll to active tab to allow manual scroll persistence
+            return;
         },
         
         // Custom smooth scrolling implementation for iOS and other platforms with issues
@@ -295,21 +241,15 @@
         },
 
         updateScrollSnap() {
+            // Disabled scroll snap behavior to allow manual scroll persistence
             const tabsList = document.getElementById('tabs-list');
             if (!tabsList) return;
             
-            // Modern scroll snap properties
-            tabsList.style.scrollSnapType = 'x proximity';
-            tabsList.style.scrollBehavior = 'smooth';
+            // Clear scroll snap properties
+            tabsList.style.scrollSnapType = 'none';
+            tabsList.style.scrollBehavior = 'auto';
             
-            // Apply scroll snap align to all tabs
-            const tabs = tabsList.getElementsByClassName('tab-item');
-            Array.from(tabs).forEach(tab => {
-                tab.style.scrollSnapAlign = 'center';
-                tab.style.scrollSnapStop = 'always';
-            });
-            
-            // Initial indicator update
+            // Initial indicator update only
             this.updateScrollIndicators(tabsList);
         }
     };

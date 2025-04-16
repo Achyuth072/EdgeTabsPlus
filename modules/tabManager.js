@@ -5,12 +5,50 @@
         lastTabsState: null,
         pendingRender: false,
         tabUpdateQueue: [],
+        scrollUpdateTimeout: null,
 
         init() {
             this.setupMessageListeners();
             this.requestInitialTabs();
             this.setupPageVisibilityListener();
+            this.setupScrollListener();
             return this;
+        },
+
+        setupScrollListener() {
+            // Only set up the listener once we have the container
+            const setupListener = () => {
+                const tabStrip = document.getElementById('edgetabs-plus-host');
+                if (tabStrip && tabStrip.shadowRoot) {
+                    const tabsList = tabStrip.shadowRoot.getElementById('tabs-list');
+                    if (tabsList) {
+                        // Add debounced scroll event listener to update shared position
+                        tabsList.addEventListener('scroll', () => {
+                            // Clear any existing timeout
+                            if (this.scrollUpdateTimeout) {
+                                clearTimeout(this.scrollUpdateTimeout);
+                            }
+                            
+                            // Set new timeout for debounced update
+                            this.scrollUpdateTimeout = setTimeout(() => {
+                                chrome.runtime.sendMessage({
+                                    action: 'UPDATE_SCROLL_POSITION',
+                                    position: tabsList.scrollLeft
+                                });
+                                EdgeTabsPlus.logger.debug(`[ScrollDebug] Sent scroll position update: ${tabsList.scrollLeft}`);
+                            }, 100); // 100ms debounce delay
+                        });
+                        return true;
+                    }
+                }
+                return false;
+            };
+
+            // Try to set up immediately
+            if (!setupListener()) {
+                // If not ready, retry after a short delay
+                setTimeout(setupListener, 100);
+            }
         },
 
         setupPageVisibilityListener() {
@@ -233,9 +271,9 @@
             // Setup message listener for tab updates
             chrome.runtime.onMessage.addListener((message) => {
                 if (message.action === 'tabsUpdated' && message.tabs) {
-                    // Queue this update
-                    EdgeTabsPlus.logger.debug(`Queueing tab update with ${message.tabs.length} tabs`);
-                    this.queueTabUpdate(message.tabs);
+                    // Queue this update with scroll position
+                    EdgeTabsPlus.logger.debug(`Queueing tab update with ${message.tabs.length} tabs and scroll position ${message.sharedScrollPosition}`);
+                    this.queueTabUpdate(message.tabs, message.sharedScrollPosition);
                 }
             });
 
@@ -269,9 +307,9 @@
             chrome.runtime.sendMessage({ action: 'getTabs' });
         },
 
-        queueTabUpdate(tabs) {
-            // Add to queue
-            this.tabUpdateQueue.push(tabs);
+        queueTabUpdate(tabs, scrollPosition) {
+            // Add to queue with scroll position
+            this.tabUpdateQueue.push({ tabs, scrollPosition });
             
             // Process queue if no render is pending
             if (!this.pendingRender) {
@@ -288,12 +326,12 @@
             this.pendingRender = true;
             
             // Get most recent update
-            const tabs = this.tabUpdateQueue.pop();
+            const update = this.tabUpdateQueue.pop();
             // Clear queue since we're using most recent state
             this.tabUpdateQueue = [];
 
             // Deduplicate tabs
-            const uniqueTabs = Array.from(new Map(tabs.map(tab => [tab.id, tab])).values());
+            const uniqueTabs = Array.from(new Map(update.tabs.map(tab => [tab.id, tab])).values());
             const newState = JSON.stringify(uniqueTabs);
 
             if (newState !== this.lastTabsState) {
@@ -303,10 +341,41 @@
                 // Use requestAnimationFrame to ensure we're in sync with browser's render cycle
                 requestAnimationFrame(() => {
                     this.renderTabs(uniqueTabs).finally(() => {
-                        this.pendingRender = false;
-                        // Process any updates that came in while we were rendering
-                        if (this.tabUpdateQueue.length > 0) {
-                            this.processNextUpdate();
+                        // Get reference to tabsList before rAF
+                        const tabStrip = document.getElementById('edgetabs-plus-host');
+                        const tabsList = tabStrip?.shadowRoot?.getElementById('tabs-list');
+
+                        if (tabsList) {
+                            EdgeTabsPlus.logger.debug(`[ScrollDebug] Before restoring - Current scrollLeft: ${tabsList.scrollLeft}`);
+                            
+                            requestAnimationFrame(() => {
+                                if (tabsList) { // Verify element still exists
+                                    const maxScrollLeft = tabsList.scrollWidth - tabsList.clientWidth;
+                                    // Ensure the position to restore is not greater than the maximum possible scroll
+                                    const validScrollPosition = Math.max(0, Math.min(update.scrollPosition, maxScrollLeft));
+
+                                    EdgeTabsPlus.logger.debug(`[ScrollDebug] Attempting restore - Shared: ${update.scrollPosition}, Max: ${maxScrollLeft}, Valid: ${validScrollPosition}`);
+                                    tabsList.scrollLeft = validScrollPosition;
+                                    EdgeTabsPlus.logger.debug(`[ScrollDebug] After restoring (in rAF) - New scrollLeft: ${tabsList.scrollLeft}`);
+                                }
+                                
+                                this.pendingRender = false;
+                                // Process any updates that came in while we were rendering
+                                if (this.tabUpdateQueue.length > 0) {
+                                    this.processNextUpdate();
+                                }
+                            });
+                            
+                            // Keep processing queue even with restoration disabled
+                            this.pendingRender = false;
+                            if (this.tabUpdateQueue.length > 0) {
+                                this.processNextUpdate();
+                            }
+                        } else {
+                            this.pendingRender = false;
+                            if (this.tabUpdateQueue.length > 0) {
+                                this.processNextUpdate();
+                            }
                         }
                     });
                 });
