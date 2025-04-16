@@ -28,20 +28,22 @@
 
         setupTouchScroll() {
             const tabsList = EdgeTabsPlus.uiComponents.tabsList;
-            
-            // Enhanced hardware acceleration and smooth scrolling
             if (tabsList) {
-                // Force hardware acceleration
-                tabsList.style.transform = 'translate3d(0,0,0)';
-                tabsList.style.backfaceVisibility = 'hidden';
-                tabsList.style.perspective = '1000';
-                tabsList.style.willChange = 'transform, scroll-position';
-                tabsList.style.overscrollBehavior = 'contain';
-                
-                // Add CSS class for styling
+                // Remove problematic hardware acceleration/transform styles
+                tabsList.style.transform = '';
+                tabsList.style.backfaceVisibility = '';
+                tabsList.style.perspective = '';
+                tabsList.style.willChange = 'scroll-position'; // Only scroll-position changes
+
+                // Let native scrolling handle it
+                tabsList.style.overflowX = 'auto'; // Enable native horizontal scroll
+                tabsList.style.scrollBehavior = 'smooth'; // Use smooth for programmatic scrolls
+                tabsList.style.overscrollBehavior = 'contain'; // Prevent overscroll effects leaking
+
+                // Add CSS class for styling (ensure styles.js has overflow-x: auto etc.)
                 tabsList.classList.add('tabs-list');
-                
-                // Add these listeners with proper options
+
+                // Add listeners
                 this.addTouchListeners(tabsList);
                 this.addMouseListeners(tabsList);
             }
@@ -107,92 +109,61 @@
             
             // Prepare for high-precision tracking
             tabsList.style.scrollBehavior = 'auto';
+            tabsList.style.scrollSnapType = 'none';  // Disable scroll snap during drag
             tabsList.classList.add('grabbing');
             document.body.classList.add('no-select');
         },
         
         onMouseMove(e) {
             if (!this.isDragging) return;
-            
+
             const tabsList = EdgeTabsPlus.uiComponents.tabsList;
             if (!tabsList) return;
-            
+
             const currentTime = performance.now();
-            const deltaTime = currentTime - this.lastTime;
-            
-            // Skip if too soon (prevent oversampling)
-            if (deltaTime < 16) return;
-            
             const x = e.pageX;
-            
+            const deltaX = this.lastX - x; // Calculate change since last move
+
             // Store position for velocity calculation
-            this.touchPositions.push({
-                x: x,
-                time: currentTime
-            });
-            
+            this.touchPositions.push({ x: x, time: currentTime });
             if (this.touchPositions.length > this.maxVelocityCapture) {
                 this.touchPositions.shift();
             }
-            
-            // Calculate and update visual position using transform
-            this.currentOffset = this.startX - x;
-            
-            // Use RAF for smooth visual updates
-            cancelAnimationFrame(this.transformRAF);
-            this.transformRAF = requestAnimationFrame(() => {
-                const clampedOffset = Math.max(0, Math.min(
-                    this.currentOffset,
-                    tabsList.scrollWidth - tabsList.clientWidth
-                ));
-                tabsList.style.transform = `translateX(${-clampedOffset}px)`;
-            });
-            
+
+            // Use native scrollLeft instead of transforms
+            // No need for RAF here, native scroll is efficient
+            tabsList.scrollLeft += deltaX;
+
             // Update tracking
             this.lastX = x;
-            this.lastTime = currentTime;
+            this.lastTime = currentTime; // Update time for velocity calc
         },
         
         onMouseUp(e) {
             if (!this.isDragging) return;
             this.isDragging = false;
-            
+
             const tabsList = EdgeTabsPlus.uiComponents.tabsList;
             if (!tabsList) return;
-            
-            // Cancel transform animation
-            cancelAnimationFrame(this.transformRAF);
-            
-            // Reset transform
-            tabsList.style.transform = '';
-            
+
             // Calculate final velocity from stored positions
             this.calculateFinalVelocity();
-            
-            // Calculate final scroll position
-            const finalScrollLeft = Math.max(0, Math.min(
-                this.scrollLeft + this.currentOffset,
-                tabsList.scrollWidth - tabsList.clientWidth
-            ));
-            
-            // Set final scroll position
-            tabsList.scrollLeft = finalScrollLeft;
-            
+
             // Apply momentum if velocity is high enough
+            // Note: scrollLeft is already updated during mousemove
             if (Math.abs(this.velocity) > 0.5) {
-                this.applyScrollMomentum(tabsList);
+                this.applyScrollMomentum(tabsList); // Momentum uses scrollLeft
             } else {
                 // Otherwise just snap to the nearest tab
                 tabsList.style.scrollBehavior = 'smooth';
+                tabsList.style.scrollSnapType = 'x proximity';  // Restore scroll snap
                 EdgeTabsPlus.scrollHandler.snapToNearestTabAfterScroll(tabsList);
             }
-            
-            // Reset offset
-            this.currentOffset = 0;
-            
+
             // Clean up
             tabsList.classList.remove('grabbing');
             document.body.classList.remove('no-select');
+            // No need to reset currentOffset or transform
         },
 
         onTouchStart(e) {
@@ -218,70 +189,56 @@
             
             // Clear transitions and prepare for new gesture
             tabsList.style.scrollBehavior = 'auto';
+            tabsList.style.scrollSnapType = 'none';  // Disable scroll snap during drag
         },
 
         onTouchMove(e) {
             if (!this.isDragging) return;
-            
+
             const tabsList = EdgeTabsPlus.uiComponents.tabsList;
             if (!tabsList) return;
-            
+
             const currentTime = performance.now();
             const x = e.touches[0].pageX;
             const y = e.touches[0].pageY;
-            
+
             // Detect scroll direction on initial movement
             if (this.isHorizontalScroll === null) {
                 const deltaX = Math.abs(x - this.startX);
                 const deltaY = Math.abs(y - this.startY);
-                
-                // If we've moved enough to determine direction
+
                 if (deltaX > 5 || deltaY > 5) {
                     this.isHorizontalScroll = deltaX > deltaY;
                     this.touchStartDirection = this.isHorizontalScroll ? 'horizontal' : 'vertical';
-                    
-                    // If vertical scrolling detected, exit early and don't prevent default
+
                     if (!this.isHorizontalScroll) {
                         this.isDragging = false; // Let native vertical scrolling take over
                         return;
                     }
+                    // If horizontal, ensure scrollBehavior is 'auto' for direct manipulation
+                    tabsList.style.scrollBehavior = 'auto';
+                } else {
+                    // Not enough movement yet to determine direction
+                    return;
                 }
             }
-            
+
             // Only process horizontal scrolling
             if (this.isHorizontalScroll) {
-                const deltaTime = currentTime - this.lastTime;
-                
                 // Store position data for momentum calculation
-                this.touchPositions.push({
-                    x: x,
-                    time: currentTime
-                });
-                
+                this.touchPositions.push({ x: x, time: currentTime });
                 if (this.touchPositions.length > this.maxVelocityCapture) {
                     this.touchPositions.shift();
                 }
-                
-                // Skip if too soon (prevent oversampling)
-                if (deltaTime < 16) return;
-                
-                // Calculate and update visual position using transform
-                this.currentOffset = this.startX - x;
-                
-                // Use RAF for smooth visual updates
-                cancelAnimationFrame(this.transformRAF);
-                this.transformRAF = requestAnimationFrame(() => {
-                    const clampedOffset = Math.max(0, Math.min(
-                        this.currentOffset,
-                        tabsList.scrollWidth - tabsList.clientWidth
-                    ));
-                    tabsList.style.transform = `translateX(${-clampedOffset}px)`;
-                });
-                
+
+                // Calculate change and update scrollLeft directly
+                const deltaX = this.lastX - x;
+                tabsList.scrollLeft += deltaX;
+
                 // Update tracking variables
                 this.lastX = x;
-                this.lastY = y;
-                this.lastTime = currentTime;
+                this.lastY = y; // Keep track of Y for direction detection consistency
+                this.lastTime = currentTime; // Update time for velocity calc
             }
         },
 
@@ -289,46 +246,34 @@
             if (!this.isDragging) {
                 return;
             }
-            
+
+            // Only process if horizontal scroll was initiated
             if (this.isHorizontalScroll) {
                 const tabsList = EdgeTabsPlus.uiComponents.tabsList;
                 if (!tabsList) {
                     this.isDragging = false;
                     return;
                 }
-                
-                // Cancel transform animation
-                cancelAnimationFrame(this.transformRAF);
-                
-                // Reset transform
-                tabsList.style.transform = '';
-                
+
                 // Calculate final velocity based on touch history
                 this.calculateFinalVelocity();
-                
-                // Calculate final scroll position
-                const finalScrollLeft = Math.max(0, Math.min(
-                    this.scrollLeft + this.currentOffset,
-                    tabsList.scrollWidth - tabsList.clientWidth
-                ));
-                
-                // Set final scroll position
-                tabsList.scrollLeft = finalScrollLeft;
-                
+
                 // Apply momentum if velocity is high enough
+                // scrollLeft is already updated during touchmove
                 if (Math.abs(this.velocity) > 0.5) {
+                    // Momentum calculation remains the same, using current scrollLeft
                     this.applyScrollMomentum(tabsList);
                 } else {
                     // Otherwise just snap to the nearest tab
-                    tabsList.style.scrollBehavior = 'smooth';
+                    tabsList.style.scrollBehavior = 'smooth'; // Enable smooth snapping
+                    tabsList.style.scrollSnapType = 'x proximity';  // Restore scroll snap
                     EdgeTabsPlus.scrollHandler.snapToNearestTabAfterScroll(tabsList);
                 }
-                
-                // Reset offset
-                this.currentOffset = 0;
+                // No need to reset currentOffset or transform
             }
-            
+
             this.isDragging = false;
+            this.isHorizontalScroll = null; // Reset direction lock
         },
         
         calculateFinalVelocity() {
@@ -381,6 +326,7 @@
                     tabsList.scrollLeft >= maxScrollLeft) {
                     
                     tabsList.style.scrollBehavior = 'smooth';
+                    tabsList.style.scrollSnapType = 'x proximity';  // Restore scroll snap
                     EdgeTabsPlus.scrollHandler.snapToNearestTabAfterScroll(tabsList);
                     return;
                 }

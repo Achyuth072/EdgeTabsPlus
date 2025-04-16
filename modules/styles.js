@@ -375,26 +375,26 @@
                 /* Tabs list and scrolling */
                 .tabs-list {
                     pointer-events: auto;
-                    touch-action: pan-x;
-                    overflow-x: auto;
-                    overflow-y: hidden;
-                    gap: 2px;
-                    -webkit-overflow-scrolling: touch;
-                    -ms-overflow-style: none;
-                    scrollbar-width: none;
-                    flex: 1;
+                    touch-action: pan-x; /* Allow horizontal panning */
+                    overflow-x: auto; /* Enable native horizontal scrolling */
+                    overflow-y: hidden; /* Prevent vertical scrolling */
+                    scroll-behavior: smooth; /* Smooth programmatic scrolls (snap, etc.) */
+                    -webkit-overflow-scrolling: touch; /* iOS momentum */
+                    overscroll-behavior-x: contain; /* Prevent page pull-to-refresh */
+                    scroll-snap-type: x proximity; /* Enable scroll snapping */
+                    display: flex; /* Layout tabs horizontally */
+                    gap: 2px; /* Space between tabs */
+                    flex: 1; /* Take available space */
                     margin: 0;
-                    padding: 0 8px;
-                    display: flex;
+                    padding: 0 8px; /* Padding inside the scroll area */
                     max-width: 100%;
-                    position: relative;
+                    position: relative; /* Needed for potential absolute children */
                     width: 100%;
-                    will-change: transform;
-                    transform: translate3d(0,0,0);
-                    backface-visibility: hidden;
-                    perspective: 1000;
-                    overscroll-behavior-x: contain;
-                    cursor: grab;
+                    cursor: grab; /* Indicate draggable */
+                    /* Removed transform, backface-visibility, perspective, will-change: transform */
+                    /* Native scrolling handles movement */
+                    -ms-overflow-style: none;  /* IE/Edge scrollbar hide */
+                    scrollbar-width: none; /* Firefox scrollbar hide */
                 }
 
                 /* Add grabbing cursor when actively scrolling */
