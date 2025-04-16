@@ -85,25 +85,7 @@
 
             // Track scroll velocity for better momentum detection
             tabsList.addEventListener('scroll', (e) => {
-                const now = performance.now();
-                const scrollPos = tabsList.scrollLeft;
-                
-                if (this.scrollTimestamp) {
-                    const dt = now - this.scrollTimestamp;
-                    const dx = scrollPos - this.lastScrollPosition;
-                    
-                    // Only calculate if enough time has passed
-                    if (dt > 10) {
-                        this.scrollVelocity = dx / dt;
-                        this.lastScrollPosition = scrollPos;
-                        this.scrollTimestamp = now;
-                        
-                        this.handleHorizontalScroll(e);
-                    }
-                } else {
-                    this.lastScrollPosition = scrollPos;
-                    this.scrollTimestamp = now;
-                }
+                this.handleHorizontalScroll(e);
             }, { passive: true });
             
             // Apply enhanced scroll snap

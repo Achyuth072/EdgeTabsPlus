@@ -142,7 +142,7 @@
                     } else if (uniqueTabs.length >= 5) {
                         tabElement.classList.remove('single-tab');
                         tabElement.classList.add('minimal');
-                        tabElement.style.removeProperty('--tab-width');
+                        tabElement.style.setProperty('--tab-width', '90px');
                     } else {
                         tabElement.classList.remove('single-tab', 'minimal');
                         tabElement.style.setProperty('--tab-width', `${tabWidth}px`);

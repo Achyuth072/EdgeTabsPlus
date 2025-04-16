@@ -119,7 +119,7 @@
             const deltaTime = currentTime - this.lastTime;
             
             // Skip if too soon (prevent oversampling)
-            if (deltaTime < 8) return;
+            if (deltaTime < 16) return;
             
             const x = e.pageX;
             const deltaX = this.lastX - x;
@@ -235,7 +235,7 @@
                 }
                 
                 // Skip if too soon (prevent oversampling)
-                if (deltaTime < 8) return;
+                if (deltaTime < 16) return;
                 
                 // Apply movement
                 tabsList.scrollLeft += deltaX * 1.0; // Multiplier for better tracking
