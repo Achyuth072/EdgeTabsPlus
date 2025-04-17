@@ -16,6 +16,8 @@
         maxVelocityCapture: 10,
         currentOffset: 0,
         transformRAF: null,
+        scrollUpdateRAF: null,
+        pendingDeltaX: 0,
 
         init() {
             // Initialize timing properties
@@ -130,9 +132,9 @@
                 this.touchPositions.shift();
             }
 
-            // Use native scrollLeft instead of transforms
-            // No need for RAF here, native scroll is efficient
-            tabsList.scrollLeft += deltaX;
+            // Schedule scroll update using RAF for smoother visual updates
+            this.pendingDeltaX += deltaX;
+            this.scheduleScrollUpdate(tabsList);
 
             // Update tracking
             this.lastX = x;
@@ -145,6 +147,10 @@
 
             const tabsList = EdgeTabsPlus.uiComponents.tabsList;
             if (!tabsList) return;
+
+            // Cancel any pending scroll updates
+            cancelAnimationFrame(this.scrollUpdateRAF);
+            this.pendingDeltaX = 0;
 
             // Calculate final velocity from stored positions
             this.calculateFinalVelocity();
@@ -231,9 +237,10 @@
                     this.touchPositions.shift();
                 }
 
-                // Calculate change and update scrollLeft directly
+                // Schedule scroll update using RAF for smoother visual updates
                 const deltaX = this.lastX - x;
-                tabsList.scrollLeft += deltaX;
+                this.pendingDeltaX += deltaX;
+                this.scheduleScrollUpdate(tabsList);
 
                 // Update tracking variables
                 this.lastX = x;
@@ -274,6 +281,21 @@
 
             this.isDragging = false;
             this.isHorizontalScroll = null; // Reset direction lock
+            cancelAnimationFrame(this.scrollUpdateRAF); // Cancel any pending scroll updates
+            this.pendingDeltaX = 0;
+        },
+
+        scheduleScrollUpdate(tabsList) {
+            // Cancel any existing RAF to avoid multiple queued updates
+            cancelAnimationFrame(this.scrollUpdateRAF);
+            
+            // Schedule new update
+            this.scrollUpdateRAF = requestAnimationFrame(() => {
+                if (this.pendingDeltaX !== 0) {
+                    tabsList.scrollLeft += this.pendingDeltaX;
+                    this.pendingDeltaX = 0;
+                }
+            });
         },
         
         calculateFinalVelocity() {
