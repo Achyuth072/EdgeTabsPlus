@@ -162,8 +162,11 @@
             } else {
                 // Otherwise just snap to the nearest tab
                 tabsList.style.scrollBehavior = 'smooth';
-                tabsList.style.scrollSnapType = 'x proximity';  // Restore scroll snap
-                EdgeTabsPlus.scrollHandler.snapToNearestTabAfterScroll(tabsList);
+                setTimeout(() => {
+                    tabsList.style.scrollSnapType = 'x proximity';  // Restore scroll snap
+                }, 0);
+                // Commented out to test if this eliminates perceived snap at end of slow drag
+                // EdgeTabsPlus.scrollHandler.snapToNearestTabAfterScroll(tabsList);
             }
 
             // Clean up
@@ -273,8 +276,11 @@
                 } else {
                     // Otherwise just snap to the nearest tab
                     tabsList.style.scrollBehavior = 'smooth'; // Enable smooth snapping
-                    tabsList.style.scrollSnapType = 'x proximity';  // Restore scroll snap
-                    EdgeTabsPlus.scrollHandler.snapToNearestTabAfterScroll(tabsList);
+                    setTimeout(() => {
+                        tabsList.style.scrollSnapType = 'x proximity';  // Restore scroll snap
+                    }, 0);
+                    // Commented out to test if this eliminates perceived snap at end of slow drag
+                    // EdgeTabsPlus.scrollHandler.snapToNearestTabAfterScroll(tabsList);
                 }
                 // No need to reset currentOffset or transform
             }
