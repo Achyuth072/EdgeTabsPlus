@@ -141,8 +141,21 @@
                         tabElement.style.removeProperty('--tab-width');
                     } else if (uniqueTabs.length >= 5) {
                         tabElement.classList.remove('single-tab');
+                        
+                        // Debug log before changes
+                        EdgeTabsPlus.logger.debug(`[TabDebug] Before minimal mode - computed width: ${getComputedStyle(tabElement).width}`);
+                        
+                        // Set minimal class first
                         tabElement.classList.add('minimal');
+                        
+                        // Debug log after minimal class
+                        EdgeTabsPlus.logger.debug(`[TabDebug] After minimal class - computed width: ${getComputedStyle(tabElement).width}`);
+                        
+                        // Then set tab width
                         tabElement.style.setProperty('--tab-width', '90px');
+                        
+                        // Debug log after width property
+                        EdgeTabsPlus.logger.debug(`[TabDebug] After width property - computed width: ${getComputedStyle(tabElement).width}, favicon position: ${getComputedStyle(tabElement.querySelector('.tab-favicon')).left}`);
                     } else {
                         tabElement.classList.remove('single-tab', 'minimal');
                         tabElement.style.setProperty('--tab-width', `${tabWidth}px`);

@@ -539,15 +539,18 @@
                     align-items: center;
                     justify-content: space-between;
                     height: 100%;
-                    padding: 0 8px 0 12px; /* Increased padding for better spacing */
-                    gap: 10px; /* Increased gap for better separation */
+                    padding: 0 8px; /* Consistent padding on both sides */
+                    gap: 8px; /* Standard gap */
+                    position: relative; /* Create positioning context */
                 }
     
                 .tab-info {
                     display: flex;
                     align-items: center;
-                    gap: 10px; /* Increased from 8px */
+                    gap: 8px;
                     min-width: 0;
+                    flex: 1; /* Take up available space */
+                    position: relative; /* For absolute positioning of children if needed */
                     flex: 1;
                     height: 100%;
                 }
@@ -788,39 +791,48 @@
 
         getTabWidthStyles() {
             return `
-                /* Base tab dimensions */
+                /* Base tab dimensions with smooth transitions */
                 .tab-item {
                     width: var(--tab-width, 180px);
                     min-width: auto;
                     max-width: none;
                     flex: 0 0 var(--tab-width, 180px);
-                    transition: width 0.3s ease-out, flex-basis 0.3s ease-out;
+                    transition: width 0.2s ease-in-out;
+                    overflow: visible;
+                    position: relative;
+                }
+
+                /* Base favicon styles with absolute positioning */
+                .tab-favicon {
+                    position: absolute;
+                    left: 8px;
+                    width: 18px !important;
+                    height: 18px !important;
+                    flex: none;
+                    margin: 0;
+                    z-index: 1;
+                    transform: translateZ(0);
+                }
+
+                /* Tab info container with absolute favicon positioning */
+                .tab-info {
+                    display: flex;
+                    align-items: center;
+                    flex: 1;
+                    min-width: 0;
+                    padding-left: 32px; /* Increased space for favicon */
+                    position: relative;
                 }
 
                 /* Minimal tab state */
                 .tab-item.minimal {
                     width: 90px;
                     flex: 0 0 90px;
-                    transition: none !important; /* Disable transition for minimal state */
-                }
-
-                .tab-item.minimal .tab-content {
-                    justify-content: space-between;
-                    padding: 0 8px; /* Consistent padding */
-                }
-                
-                .tab-item.minimal .tab-info {
-                    justify-content: flex-start;
-                    gap: 4px; /* Reduced gap in minimal state */
                 }
 
                 .tab-item.minimal .tab-title {
-                    display: none; /* Hide text completely */
-                }
-
-                .tab-item.minimal .tab-favicon {
-                    margin: 0;
-                    flex-shrink: 0; /* Prevent favicon from shrinking */
+                    display: none;
+                    visibility: hidden; /* Double-ensure it doesn't affect layout */
                 }
             `;
         },
@@ -840,30 +852,31 @@
                     max-width: 140px;
                 }
 
-                /* Regular tab states */
+                /* Regular tab states with consistent transitions */
                 .tab-item:not(.minimal):not(.single-tab) {
-                    transition: width 0.3s ease-out;
+                    transition: all 0.2s ease-in-out;
                 }
 
-                /* Minimal state styles */
+                /* Simplified minimal state styles */
                 .tab-item.minimal {
                     width: 90px;
                     flex: 0 0 90px;
-                    transition: none !important; /* Disable transition for minimal state */
                 }
 
                 .tab-item.minimal .tab-info {
-                    justify-content: center;
+                    justify-content: flex-start;
                 }
 
+                /* Ensure title is hidden but maintains layout */
                 .tab-item.minimal .tab-title {
                     display: none;
                 }
 
+                /* Keep favicon size consistent at 18px */
                 .tab-item.minimal .tab-favicon {
                     margin: 0;
-                    width: 18px; /* Maintain consistent size in minimal state */
-                    height: 18px;
+                    width: 18px !important;
+                    height: 18px !important;
                 }
 
                 /* Single tab state */
