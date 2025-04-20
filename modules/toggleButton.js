@@ -144,12 +144,14 @@
             fixedButton.style.margin = '0';
             fixedButton.style.cursor = 'pointer';            fixedButton.style.fontSize = '18px';
             fixedButton.style.fontWeight = 'bold';
-            fixedButton.style.color = 'var(--tab-text, #000)'; // Match the tab strip text color
+            fixedButton.style.color = '#09b4f6'; // Force consistent color for both states
             fixedButton.style.display = 'flex';
             fixedButton.style.alignItems = 'center';
             fixedButton.style.justifyContent = 'center';
             fixedButton.style.width = '28px';
             fixedButton.style.height = '28px';
+            fixedButton.style.lineHeight = '0'; // Match line-height for consistent alignment
+            fixedButton.style.transform = 'none'; // Remove scaling to match smaller icon size
             fixedButton.innerHTML = '▲';
             fixedButton.setAttribute('aria-label', 'Expand tab strip');
             

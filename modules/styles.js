@@ -458,8 +458,8 @@
 
                 /* Close button base styles */
                 .close-tab {
-                    width: 20px !important;
-                    height: 20px !important;
+                    width: 24px !important;
+                    height: 24px !important;
                     display: flex !important;
                     align-items: center !important;
                     justify-content: center !important;
@@ -467,15 +467,18 @@
                     border: none !important;
                     border-radius: 50% !important;
                     color: var(--tab-text) !important;
-                    font-size: 16px !important;
-                    font-weight: 700 !important;
-                    line-height: 1 !important;
                     cursor: pointer !important;
                     opacity: 0.85 !important;
                     position: relative !important;
-                    padding: 0 !important;
+                    padding: 4px !important;
                     margin: 0 !important;
                     transition: opacity 0.2s ease, background-color 0.2s ease !important;
+                }
+
+                .close-tab svg {
+                    width: 16px !important;
+                    height: 16px !important;
+                    display: block !important;
                 }
 
                 .close-tab:hover {
@@ -735,11 +738,11 @@
                     content: '';
                     position: absolute;
                     top: -1px;
-                    left: -1px;
-                    right: -1px;
+                    left: 0;
+                    right: 0;
                     height: 2px;
                     background-color: var(--tab-active-indicator);
-                    border-radius: 2px 2px 0 0;
+                    border-radius: 8px 8px 0 0;
                 }
 
                 #log-overlay {
@@ -1196,18 +1199,20 @@
                     box-shadow: 0 2px 6px var(--tab-active-shadow) !important;
                     position: relative !important;
                     z-index: 2 !important;
-                    transform: translateY(-1px) scale(1.02) !important;
+                    transform: translateY(-1px) !important;
+                    overflow: hidden !important;
                 }
 
                 #edgetabs-plus-strip .tab-item.active::before {
                     content: '' !important;
                     position: absolute !important;
-                    top: -1px !important;
-                    left: -1px !important;
-                    right: -1px !important;
+                    top: 0 !important;
+                    left: 1px !important;
+                    right: 1px !important;
                     height: 2px !important;
                     background-color: var(--tab-active-indicator) !important;
-                    border-radius: 2px 2px 0 0 !important;
+                    border-radius: 1px 1px 0 0 !important;
+                    box-sizing: border-box !important;
                 }
 
                 #edgetabs-plus-strip .tab-item.active span:not(.close-tab) {
@@ -1239,6 +1244,17 @@
                 /* Adaptive color scheme based on host attribute */
                 :host {
                     color-scheme: light dark;
+                    /* Add smooth transitions for theme changes */
+                    transition: background-color 0.3s ease;
+                }
+
+                /* Apply transitions to all themed elements */
+                #edgetabs-plus-strip, .tab-item, .close-tab {
+                    transition:
+                        background-color 0.3s ease,
+                        border-color 0.3s ease,
+                        box-shadow 0.3s ease,
+                        color 0.3s ease;
                 }
 
                 /* Auto dark mode via system preference */
@@ -1301,15 +1317,21 @@
                     background: transparent;
                     border: none;
                     cursor: pointer;
-                    color: var(--tab-text);
+                    color: #09b4f6 !important; /* Force consistent color for both states */
                     font-size: 18px;
                     font-weight: bold;
-                    line-height: 1;
+                    line-height: 0; /* Tighter line height for better symbol alignment */
                     transition: all 0.2s ease;
                     margin-right: 8px;
                     z-index: 10;
                     padding: 0;
                     align-self: center; /* Center vertically within the flex container */
+                }
+
+                /* Normalize triangle sizes */
+                /* Removed scale transform to match smaller icon size */
+                .strip-toggle-btn:not(.collapsed) {
+                    transform: none;
                 }
 
                 .strip-toggle-btn:hover {
@@ -1353,7 +1375,10 @@
                     left: 10px;
                     margin: 0;
                     background-color: transparent;
+                    color: #09b4f6 !important; /* Force consistent color in collapsed state */
                     z-index: 9999999;
+                    line-height: 0; /* Match the line-height of expanded state */
+                    transform: scale(1.1); /* Match the scale of expanded state for visual consistency */
                 }
                 
                 /* Fix for toggle button position during scrolling */

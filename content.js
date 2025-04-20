@@ -45,16 +45,38 @@
             EdgeTabsPlus.touchHandler.init();
 
             // Initialize states from storage
+            // Initialize theme media query listener
+            const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            const updateThemeFromMediaQuery = (e) => {
+                const isDark = e.matches;
+                const newTheme = isDark ? 'dark' : 'light';
+                updateTheme(newTheme);
+            };
+            
+            // Listen for system theme changes
+            darkModeMediaQuery.addEventListener('change', updateThemeFromMediaQuery);
+
+            // Function to update theme
+            const updateTheme = (theme) => {
+                // Apply theme to host element in shadow DOM
+                const host = document.getElementById('edgetabs-plus-host');
+                if (host && host.shadowRoot) {
+                    host.setAttribute('theme', theme);
+                    window.EdgeTabsPlus.currentTheme = theme;
+                    EdgeTabsPlus.logger.addLog(`Theme updated to ${theme}`);
+                }
+            };
+
             await new Promise((resolve) => {
                 chrome.storage.sync.get(['theme', 'isDarkMode', 'showTabStrip', 'autoHide'], (result) => {
                     try {
                         // Theme initialization
                         let theme = result.theme;
                         if (!theme) {
-                            const isDark = result.isDarkMode !== undefined ? result.isDarkMode :
-                                         window.matchMedia('(prefers-color-scheme: dark)').matches;
-                            theme = isDark ? 'dark' : 'light';
+                            // Use system preference
+                            theme = darkModeMediaQuery.matches ? 'dark' : 'light';
                         }
+                        updateTheme(theme);
                         
                         // Apply theme to host element in shadow DOM
                         const host = document.getElementById('edgetabs-plus-host');
@@ -139,9 +161,7 @@
                     host.classList.add('theme-transitioning');
                     strip.classList.add('theme-transitioning');
                     
-                    // Update theme
-                    host.setAttribute('theme', message.theme);
-                    window.EdgeTabsPlus.currentTheme = message.theme;
+                    updateTheme(message.theme);
                     
                     // Update styles through UI components only
                     EdgeTabsPlus.uiComponents.injectStyles();
@@ -154,8 +174,6 @@
                         host.classList.remove('theme-transitioning');
                         strip.classList.remove('theme-transitioning');
                     }, 300);
-                    
-                    logger.addLog(`Theme updated to ${message.theme} mode`);
                     
                     // Send confirmation
                     if (sendResponse) {
