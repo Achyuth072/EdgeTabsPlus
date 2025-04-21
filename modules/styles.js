@@ -1318,14 +1318,23 @@
                     border: none;
                     cursor: pointer;
                     color: #09b4f6 !important; /* Force consistent color for both states */
-                    font-size: 18px;
-                    font-weight: bold;
-                    line-height: 0; /* Tighter line height for better symbol alignment */
+                    font-size: 18px !important; /* Force consistent base font size */
+                    font-weight: normal !important; /* Force consistent weight */
+                    line-height: 1; /* Changed from 0 to 1 for more consistent rendering */
                     transition: all 0.2s ease;
                     margin-right: 8px;
                     z-index: 10;
                     padding: 0;
-                    align-self: center; /* Center vertically within the flex container */
+                    align-self: center;
+                }
+
+                /* Ensure consistent symbol dimensions in base state */
+                .strip-toggle-btn::before {
+                    display: block;
+                    width: 18px;
+                    height: 18px;
+                    line-height: 18px;
+                    text-align: center;
                 }
 
                 /* Normalize triangle sizes */
@@ -1376,9 +1385,10 @@
                     margin: 0;
                     background-color: transparent;
                     color: #09b4f6 !important; /* Force consistent color in collapsed state */
+                    font-size: inherit !important; /* Inherit font size from parent */
                     z-index: 9999999;
-                    line-height: 0; /* Match the line-height of expanded state */
-                    transform: scale(1.1); /* Match the scale of expanded state for visual consistency */
+                    line-height: 1; /* Consistent line-height across states */
+                    transform: none; /* Remove scaling to ensure consistent sizing */
                 }
                 
                 /* Fix for toggle button position during scrolling */
@@ -1393,16 +1403,41 @@
                     .strip-toggle-btn {
                         width: 34px;
                         height: 34px;
-                        font-size: 18px;
+                        font-size: 22px; /* Increased font size for mobile */
+                        line-height: 1 !important; /* Force consistent line height */
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        transform: none !important; /* Force consistent sizing */
+                    }
+
+                    /* Apply the same styles to collapsed state */
+                    #edgetabs-plus-strip.collapsed .strip-toggle-btn {
+                        width: 34px;
+                        height: 34px;
+                        font-size: 22px;
+                        line-height: 1 !important;
                     }
                     
+                    /* Ensure consistent symbol dimensions */
+                    .strip-toggle-btn::before {
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        width: 22px !important;
+                        height: 22px !important;
+                        line-height: inherit !important;
+                        text-align: center;
+                    }
+                    
+                    /* Expanded touch target */
                     .strip-toggle-btn::after {
                         content: '';
                         position: absolute;
-                        top: -4px;
-                        left: -4px;
-                        right: -4px;
-                        bottom: -4px;
+                        top: -8px;
+                        left: -8px;
+                        right: -8px;
+                        bottom: -8px;
                     }
                 }
             `;
