@@ -15,7 +15,8 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>", "https://www.google.com/s2/*"],      "js": [
+      "matches": ["<all_urls>", "https://www.google.com/s2/*"],
+      "js": [
         "modules/namespace.js",
         "modules/config.js",
         "modules/logger.js",

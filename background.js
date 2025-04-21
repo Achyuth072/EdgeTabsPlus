@@ -83,9 +83,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             break;
         case 'createTab':
             setTimeout(() => {
-                chrome.tabs.create({})
+                chrome.tabs.create({ url: 'about:newtab' })
                     .then(newTab => {
-                        return chrome.tabs.update(newTab.id, { active: true });
+                        // Only update active state
+                        return chrome.tabs.update(newTab.id, {
+                            active: true
+                        });
                     })
                     .then(() => notifyTabsUpdated(true)) // Immediate update for new tabs
                     .catch(error => console.error('Failed to create tab:', error));

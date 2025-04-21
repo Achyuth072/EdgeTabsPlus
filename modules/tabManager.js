@@ -170,11 +170,18 @@
 
                     // Update title if changed
                     const titleSpan = tabElement.querySelector('.tab-title');
-                    const cleanTitle = tab.title
-                        ?.replace(/ at DuckDuckGo$/i, '')
-                        ?.replace(/ - DuckDuckGo$/i, '')
-                        ?.split(' - ')[0]
-                        ?.trim() || 'New Tab';
+                    let cleanTitle = 'New Tab';
+                    if (tab.title) {
+                        if (tab.title === 'edge://newtab') {
+                            cleanTitle = 'New tab';
+                        } else {
+                            cleanTitle = tab.title
+                                .replace(/ at DuckDuckGo$/i, '')
+                                .replace(/ - DuckDuckGo$/i, '')
+                                .split(' - ')[0]
+                                .trim();
+                        }
+                    }
                     
                     if (titleSpan.textContent !== cleanTitle) {
                         titleSpan.textContent = cleanTitle;
