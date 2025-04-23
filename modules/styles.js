@@ -472,18 +472,33 @@
                     position: relative !important;
                     padding: 4px !important;
                     margin: 0 !important;
-                    transition: opacity 0.2s ease, background-color 0.2s ease !important;
+                    transition: transform 0.15s ease, opacity 0.2s ease, background-color 0.2s ease !important;
+                    transform: scale(1) !important;
                 }
 
                 .close-tab svg {
                     width: 16px !important;
                     height: 16px !important;
                     display: block !important;
+                    transform: scale(1) !important;
+                    transition: transform 0.15s ease !important;
                 }
 
                 .close-tab:hover {
                     opacity: 1;
                     background-color: var(--tab-hover-bg);
+                }
+
+                /* Enhanced press feedback */
+                .close-tab:active {
+                    opacity: 1 !important;
+                    background-color: var(--tab-active-indicator) !important;
+                    transform: scale(0.85) !important;
+                }
+
+                .close-tab:active svg {
+                    color: #ffffff !important;
+                    transform: scale(0.9) !important;
                 }
 
                 /* Ensure minimum touch target size for mobile */
@@ -511,8 +526,17 @@
                         font-family: system-ui, -apple-system, sans-serif;
                         /* Adjust line-height for better centering */
                         line-height: 16px;
-                        /* Disable animations on Android */
-                        transition: none;
+                        /* Keep animations but optimize for mobile */
+                        transition: transform 0.1s ease, opacity 0.2s ease, background-color 0.2s ease !important;
+                        /* Add touch feedback ripple */
+                        -webkit-tap-highlight-color: transparent;
+                    }
+
+                    /* Specific mobile active state */
+                    .close-tab:active {
+                        transform: scale(0.85) !important;
+                        background-color: var(--tab-active-indicator) !important;
+                        opacity: 1 !important;
                     }
                 }
 
@@ -1311,11 +1335,19 @@
                 .strip-toggle-btn {
                     --toggle-base-color: #09b4f6;
                     --toggle-hover-color: #0da2db;
-                    --toggle-bg-light: #ffffff;
-                    --toggle-bg-dark: #2c2c2c;
-                    --toggle-shadow-light: rgba(0, 0, 0, 0.15);
-                    --toggle-shadow-dark: rgba(0, 0, 0, 0.3);
-                    --toggle-transition: 0.2s ease-out;
+                    --toggle-bg-light: transparent;
+                    --toggle-bg-dark: transparent;
+                    --toggle-shadow-light: none;
+                    --toggle-shadow-dark: none;
+                    --toggle-transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+                    /* Prevent tap highlight and default button styling */
+                    -webkit-tap-highlight-color: transparent !important;
+                    -webkit-touch-callout: none !important;
+                    user-select: none !important;
+                    -webkit-user-select: none !important;
+                    appearance: none !important;
+                    -webkit-appearance: none !important;
 
                     display: flex !important;
                     opacity: 1;
@@ -1351,28 +1383,42 @@
                 /* Button states with enforced colors */
                 .strip-toggle-btn:hover {
                     color: var(--toggle-hover-color) !important;
-                    background-color: rgba(9, 180, 246, 0.1) !important;
+                    background-color: transparent !important;
                 }
 
-                .strip-toggle-btn:active {
+                /* Enhanced active/focus states */
+                .strip-toggle-btn:active,
+                .strip-toggle-btn:focus {
                     transform: scale(0.95) !important;
+                    outline: none !important;
+                    background-color: transparent !important;
+                    -webkit-tap-highlight-color: transparent !important;
+                }
+
+                /* Additional highlight prevention */
+                .strip-toggle-btn:focus-visible {
+                    outline: none !important;
                 }
 
                 /* Fixed state styling */
+                /* Fixed state styling with improved positioning */
                 .strip-toggle-btn.fixed {
                     position: fixed !important;
-                    bottom: 10px !important;
-                    left: 10px !important;
+                    bottom: 6px !important; /* Adjusted for perfect alignment */
+                    left: 12px !important; /* Adjusted for perfect alignment */
                     margin: 0 !important;
-                    z-index: 10000000 !important; /* Ensure fixed button is above strip */
-                    background-color: var(--toggle-bg-light) !important;
-                    box-shadow: 0 2px 6px var(--toggle-shadow-light) !important;
+                    transform: translateZ(0) !important; /* Force GPU acceleration */
+                    z-index: 10000000 !important;
+                    background-color: transparent !important;
+                    box-shadow: none !important;
+                    transition: opacity var(--toggle-transition), transform var(--toggle-transition) !important;
+                    backface-visibility: hidden !important; /* Prevent rendering artifacts */
                 }
 
                 /* Dark theme adjustments */
                 :host([theme="dark"]) .strip-toggle-btn.fixed {
-                    background-color: var(--toggle-bg-dark) !important;
-                    box-shadow: 0 2px 6px var(--toggle-shadow-dark) !important;
+                    background-color: transparent !important;
+                    box-shadow: none !important;
                 }
 
                 /* Consistent symbol dimensions */
@@ -1445,6 +1491,7 @@
                         height: 38px !important;
                         font-size: 22px !important;
                         border-radius: 6px !important;
+                        background-color: transparent !important;
                     }
 
                     /* Ensure proper sizing in both normal and fixed states */
@@ -1454,10 +1501,12 @@
                         padding: 8px !important;
                     }
 
-                    /* Fixed position adjustments for mobile */
+                    /* Fixed position adjustments for mobile with consistent positioning */
                     .strip-toggle-btn.fixed {
-                        bottom: 16px !important;
-                        left: 16px !important;
+                        bottom: 16px !important; /* Adjusted for perfect alignment with mobile size */
+                        left: 12px !important; /* Keep consistent with desktop position */
+                        transform: translateZ(0) !important;
+                        backface-visibility: hidden !important;
                     }
 
                     /* Enhanced touch target with larger hit area */
