@@ -1307,49 +1307,86 @@
             `;
         },        getToggleStyles() {
             return `
-                /* Toggle button styling */
+                /* Toggle button base styling with complete theme isolation */
                 .strip-toggle-btn {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 28px;
-                    height: 28px;
-                    background: transparent;
-                    border: none;
-                    cursor: pointer;
-                    color: #09b4f6 !important; /* Force consistent color for both states */
-                    font-size: 18px !important; /* Force consistent base font size */
-                    font-weight: normal !important; /* Force consistent weight */
-                    line-height: 1; /* Changed from 0 to 1 for more consistent rendering */
-                    transition: all 0.2s ease;
-                    margin-right: 8px;
-                    z-index: 10;
-                    padding: 0;
-                    align-self: center;
+                    --toggle-base-color: #09b4f6;
+                    --toggle-hover-color: #0da2db;
+                    --toggle-bg-light: #ffffff;
+                    --toggle-bg-dark: #2c2c2c;
+                    --toggle-shadow-light: rgba(0, 0, 0, 0.15);
+                    --toggle-shadow-dark: rgba(0, 0, 0, 0.3);
+                    --toggle-transition: 0.2s ease-out;
+
+                    display: flex !important;
+                    opacity: 1;
+                    visibility: visible;
+                    transition: opacity var(--toggle-transition), visibility var(--toggle-transition);
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 28px !important;
+                    height: 28px !important;
+                    padding: 0 !important;
+                    margin-right: 8px !important;
+                    border: none !important;
+                    border-radius: 4px !important;
+                    background-color: transparent !important;
+                    color: var(--toggle-base-color) !important;
+                    font-size: 18px !important;
+                    font-weight: normal !important;
+                    font-family: system-ui, -apple-system, sans-serif !important;
+                    line-height: 1 !important;
+                    cursor: pointer !important;
+                    transition: all 0.2s ease !important;
+                    z-index: 10 !important;
+                    align-self: center !important;
+                    
+                    /* Enhanced isolation */
+                    -webkit-font-smoothing: antialiased !important;
+                    text-rendering: optimizeLegibility !important;
+                    box-shadow: none !important;
+                    text-shadow: none !important;
+                    pointer-events: auto !important;
                 }
 
-                /* Ensure consistent symbol dimensions in base state */
-                .strip-toggle-btn::before {
-                    display: block;
-                    width: 18px;
-                    height: 18px;
-                    line-height: 18px;
-                    text-align: center;
-                }
-
-                /* Normalize triangle sizes */
-                /* Removed scale transform to match smaller icon size */
-                .strip-toggle-btn:not(.collapsed) {
-                    transform: none;
-                }
-
+                /* Button states with enforced colors */
                 .strip-toggle-btn:hover {
-                    color: var(--add-btn-hover-color);
+                    color: var(--toggle-hover-color) !important;
+                    background-color: rgba(9, 180, 246, 0.1) !important;
                 }
 
                 .strip-toggle-btn:active {
-                    transform: scale(0.95);
-                }                /* Collapsed state styles */
+                    transform: scale(0.95) !important;
+                }
+
+                /* Fixed state styling */
+                .strip-toggle-btn.fixed {
+                    position: fixed !important;
+                    bottom: 10px !important;
+                    left: 10px !important;
+                    margin: 0 !important;
+                    z-index: 10000000 !important; /* Ensure fixed button is above strip */
+                    background-color: var(--toggle-bg-light) !important;
+                    box-shadow: 0 2px 6px var(--toggle-shadow-light) !important;
+                }
+
+                /* Dark theme adjustments */
+                :host([theme="dark"]) .strip-toggle-btn.fixed {
+                    background-color: var(--toggle-bg-dark) !important;
+                    box-shadow: 0 2px 6px var(--toggle-shadow-dark) !important;
+                }
+
+                /* Consistent symbol dimensions */
+                .strip-toggle-btn::before {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    width: 18px !important;
+                    height: 18px !important;
+                    line-height: inherit !important;
+                    text-align: center !important;
+                }
+
+                /* Collapsed state styles */
                 #edgetabs-plus-strip.collapsed {
                     height: auto;
                     min-height: 0;
@@ -1365,6 +1402,13 @@
                 #edgetabs-plus-strip.collapsed > *:not(.strip-toggle-btn) {
                     display: none !important;
                 }
+
+                /* Hidden state for buttons */
+                .strip-toggle-btn.hidden {
+                    opacity: 0 !important;
+                    visibility: hidden !important;
+                    pointer-events: none !important;
+                }
                 
                 /* Transition effects for collapsing/expanding */
                 #edgetabs-plus-strip.transitioning > *:not(.strip-toggle-btn) {
@@ -1377,67 +1421,69 @@
                     opacity: 1 !important;
                     pointer-events: auto !important;
                 }
-                  /* Special styling for collapsed state toggle button */
-                #edgetabs-plus-strip.collapsed .strip-toggle-btn {
-                    position: fixed;
-                    bottom: 10px;
-                    left: 10px;
-                    margin: 0;
-                    background-color: transparent;
-                    color: #09b4f6 !important; /* Force consistent color in collapsed state */
-                    font-size: inherit !important; /* Inherit font size from parent */
-                    z-index: 9999999;
-                    line-height: 1; /* Consistent line-height across states */
-                    transform: none; /* Remove scaling to ensure consistent sizing */
+                /* Make strip transparent in collapsed state */
+                #edgetabs-plus-strip.collapsed {
+                    height: auto !important;
+                    min-height: 0 !important;
+                    background: transparent !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    padding: 0 !important;
+                    overflow: visible !important;
+                    pointer-events: none !important;
+                }
+
+                /* Hide all elements except toggle button in collapsed state */
+                #edgetabs-plus-strip.collapsed > *:not(.strip-toggle-btn) {
+                    display: none !important;
                 }
                 
-                /* Fix for toggle button position during scrolling */
-                .strip-toggle-btn {
-                    position: relative;
-                    transform: none !important;
-                    will-change: transform;
-                }
-                
-                /* Adjust for mobile devices */
+                /* Mobile optimizations */
                 @media (pointer: coarse) {
                     .strip-toggle-btn {
-                        width: 34px;
-                        height: 34px;
-                        font-size: 22px; /* Increased font size for mobile */
-                        line-height: 1 !important; /* Force consistent line height */
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        transform: none !important; /* Force consistent sizing */
+                        width: 38px !important;
+                        height: 38px !important;
+                        font-size: 22px !important;
+                        border-radius: 6px !important;
                     }
 
-                    /* Apply the same styles to collapsed state */
-                    #edgetabs-plus-strip.collapsed .strip-toggle-btn {
-                        width: 34px;
-                        height: 34px;
-                        font-size: 22px;
-                        line-height: 1 !important;
+                    /* Ensure proper sizing in both normal and fixed states */
+                    .strip-toggle-btn,
+                    .strip-toggle-btn.fixed {
+                        margin: 0 !important;
+                        padding: 8px !important;
                     }
-                    
-                    /* Ensure consistent symbol dimensions */
-                    .strip-toggle-btn::before {
-                        display: flex !important;
-                        align-items: center !important;
-                        justify-content: center !important;
-                        width: 22px !important;
-                        height: 22px !important;
-                        line-height: inherit !important;
-                        text-align: center;
+
+                    /* Fixed position adjustments for mobile */
+                    .strip-toggle-btn.fixed {
+                        bottom: 16px !important;
+                        left: 16px !important;
                     }
-                    
-                    /* Expanded touch target */
+
+                    /* Enhanced touch target with larger hit area */
                     .strip-toggle-btn::after {
-                        content: '';
-                        position: absolute;
-                        top: -8px;
-                        left: -8px;
-                        right: -8px;
-                        bottom: -8px;
+                        content: '' !important;
+                        position: absolute !important;
+                        top: -12px !important;
+                        left: -12px !important;
+                        right: -12px !important;
+                        bottom: -12px !important;
+                        z-index: -1 !important;
+                    }
+
+                    /* Improved visual feedback for touch */
+                    .strip-toggle-btn:active {
+                        transform: scale(0.92) !important;
+                        transition: transform 0.1s ease !important;
+                    }
+                }
+
+                /* Reduced motion preference */
+                @media (prefers-reduced-motion: reduce) {
+                    .strip-toggle-btn,
+                    .strip-toggle-btn:active {
+                        transition: none !important;
+                        transform: none !important;
                     }
                 }
             `;

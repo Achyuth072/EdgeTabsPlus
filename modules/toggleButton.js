@@ -34,22 +34,26 @@
             const strip = shadow.getElementById('edgetabs-plus-strip');
             if (!strip) return;
             
-            // Create the toggle button
-            this.button = document.createElement('button');
-            this.button.id = 'strip-toggle-btn';
-            this.button.className = 'strip-toggle-btn';
-            this.button.setAttribute('aria-label', this.isCollapsed ? 'Expand tab strip' : 'Collapse tab strip');
-            this.button.innerHTML = this.isCollapsed ? '▲' : '▼';
-            
-            // Add click handler
-            this.button.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.toggleTabStrip();
-            });
-            
-            // Insert the button at the beginning of the strip
-            strip.insertBefore(this.button, strip.firstChild);
+            // Create main toggle button only if it doesn't exist
+            if (!this.button) {
+                this.button = document.createElement('button');
+                this.button.id = 'strip-toggle-btn';
+                this.button.className = 'strip-toggle-btn';
+                this.button.setAttribute('aria-label', 'Collapse tab strip');
+                this.button.innerHTML = '▼';
+                
+                // Add click handler specific to main button (collapse only)
+                this.button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!this.isCollapsed) {
+                        this.toggleTabStrip();
+                    }
+                });
+                
+                // Insert the button at the beginning of the strip
+                strip.insertBefore(this.button, strip.firstChild);
+            }
         },
 
         updateButtonState() {
@@ -59,9 +63,24 @@
             this.button.innerHTML = this.isCollapsed ? '▲' : '▼';
             this.button.setAttribute('aria-label', this.isCollapsed ? 'Expand tab strip' : 'Collapse tab strip');
         },
-
         toggleTabStrip() {
-            this.isCollapsed = !this.isCollapsed;
+            const oldState = this.isCollapsed;
+            
+            if (EdgeTabsPlus.logger) {
+                EdgeTabsPlus.logger.addLog(`Starting toggle - current state: ${oldState}`);
+            }
+            
+            // Perform DOM changes first
+            if (oldState) {
+                // If currently collapsed, expand first
+                this.expandTabStrip();
+            } else {
+                // If currently expanded, collapse first
+                this.collapseTabStrip(true);
+            }
+            
+            // Update state after DOM changes
+            this.isCollapsed = !oldState;
             
             // Store the state for persistence
             chrome.storage.sync.set({ tabStripCollapsed: this.isCollapsed }, () => {
@@ -70,138 +89,145 @@
                 }
             });
             
-            // Update visual state
+            // Update main button state
             this.updateButtonState();
-            
-            // Apply the collapse/expand with animation
-            if (this.isCollapsed) {
-                this.collapseTabStrip(true);
-            } else {
-                this.expandTabStrip();
-            }
-        },        collapseTabStrip(animate = true) {
+        },
+         
+         collapseTabStrip(animate = true) {
             const host = document.getElementById('edgetabs-plus-host');
             if (!host || !host.shadowRoot) return;
             
             const strip = host.shadowRoot.getElementById('edgetabs-plus-strip');
             if (!strip) return;
-
-            // Hide the button inside the strip to avoid having two buttons
+            
+            // First, update internal state to collapsed
+            this.isCollapsed = true;
+            
+            // Update strip button state and hide it using a class
             if (this.button) {
-                this.button.style.display = 'none';
+                this.button.classList.add('hidden');
+                this.button.setAttribute('aria-label', 'Collapse tab strip');
+                this.button.innerHTML = '▼';
             }
             
+            // Clean up any existing fixed button
+            this.cleanup();
+            
             if (animate) {
-                // Add transitioning class for animation
                 strip.classList.add('transitioning');
             }
             
-            // Add collapsed class
+            // Update strip state
             strip.classList.add('collapsed');
             
-            // Create fixed position button container if needed
-            if (!this.fixedButtonContainer) {
+            // Only create fixed button after strip button is hidden
+            requestAnimationFrame(() => {
                 this.createFixedToggleButton();
-            } else {
-                // Show the fixed toggle button
-                this.fixedButtonContainer.style.display = 'flex';
-            }
+            });
             
-            // Remove transitioning class after animation completes
             if (animate) {
                 setTimeout(() => {
                     strip.classList.remove('transitioning');
                 }, 300);
             }
 
-            // Log the action
             if (EdgeTabsPlus.logger) {
                 EdgeTabsPlus.logger.addLog(`Tab strip collapsed`);
             }
         },
         
-        // Create a fixed position toggle button that isn't affected by scroll
+        // Create a fixed position toggle button within the shadow DOM
         createFixedToggleButton() {
-            const body = document.body;
-            
-            // Create a fixed container for the toggle button
-            this.fixedButtonContainer = document.createElement('div');
-            this.fixedButtonContainer.id = 'fixed-toggle-container';
-            this.fixedButtonContainer.style.position = 'fixed';
-            this.fixedButtonContainer.style.bottom = '10px';
-            this.fixedButtonContainer.style.left = '10px';
-            this.fixedButtonContainer.style.zIndex = '9999999';
-            this.fixedButtonContainer.style.display = 'flex';
-            this.fixedButtonContainer.style.alignItems = 'center';
-            this.fixedButtonContainer.style.justifyContent = 'center';
-            
-            // Create the fixed toggle button
-            const fixedButton = document.createElement('button');
-            fixedButton.className = 'fixed-toggle-btn';
-            fixedButton.style.background = 'transparent';
-            fixedButton.style.border = 'none';
-            fixedButton.style.padding = '0';
-            fixedButton.style.margin = '0';
-            fixedButton.style.cursor = 'pointer';            fixedButton.style.fontSize = '18px';
-            fixedButton.style.fontWeight = 'bold';
-            fixedButton.style.color = '#09b4f6'; // Force consistent color for both states
-            fixedButton.style.display = 'flex';
-            fixedButton.style.alignItems = 'center';
-            fixedButton.style.justifyContent = 'center';
-            fixedButton.style.width = '28px';
-            fixedButton.style.height = '28px';
-            fixedButton.style.lineHeight = '0'; // Match line-height for consistent alignment
-            fixedButton.style.transform = 'none'; // Remove scaling to match smaller icon size
-            fixedButton.innerHTML = '▲';
-            fixedButton.setAttribute('aria-label', 'Expand tab strip');
-            
-            // Add click handler
-            fixedButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.toggleTabStrip();
-            });
-            
-            this.fixedButtonContainer.appendChild(fixedButton);
-            body.appendChild(this.fixedButtonContainer);
-        },        expandTabStrip() {
-            const host = document.getElementById('edgetabs-plus-host');
-            if (!host || !host.shadowRoot) return;
-            
-            const strip = host.shadowRoot.getElementById('edgetabs-plus-strip');
-            if (!strip) return;
-            
-            // Add transitioning class for animation
-            strip.classList.add('transitioning');
-            
-            // Remove collapsed class
-            strip.classList.remove('collapsed');
-            
-            // Hide the fixed toggle button if it exists
-            if (this.fixedButtonContainer) {
-                this.fixedButtonContainer.style.display = 'none';
+           if (EdgeTabsPlus.logger) {
+               EdgeTabsPlus.logger.addLog(`Creating fixed button - isCollapsed: ${this.isCollapsed}, fixedButtonContainer exists: ${!!this.fixedButtonContainer}`);
+           }
+           
+           // Only create if we're in collapsed state and don't have a fixed button
+           if (this.isCollapsed && !this.fixedButtonContainer) {
+                const host = document.getElementById('edgetabs-plus-host');
+                if (!host || !host.shadowRoot) return;
+                
+                const shadow = host.shadowRoot;
+                
+                // Create the fixed button using the shadow DOM's styling
+                const fixedButton = document.createElement('button');
+                fixedButton.className = 'strip-toggle-btn fixed';
+                fixedButton.setAttribute('aria-label', 'Expand tab strip');
+                fixedButton.innerHTML = '▲';
+                
+                // Add click handler specific to fixed button (expand only)
+                fixedButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (this.isCollapsed) {
+                        if (EdgeTabsPlus.logger) {
+                            EdgeTabsPlus.logger.addLog('Fixed button clicked - expanding strip');
+                        }
+                        this.toggleTabStrip();
+                    }
+                });
+                
+                // Add to shadow DOM
+                this.fixedButtonContainer = fixedButton;
+                shadow.appendChild(fixedButton);
             }
+        },
+        
+        expandTabStrip() {
+           const host = document.getElementById('edgetabs-plus-host');
+           if (!host || !host.shadowRoot) return;
+           
+           const strip = host.shadowRoot.getElementById('edgetabs-plus-strip');
+           if (!strip) return;
+           
+           // Remove fixed button first to prevent any overlap
+           if (this.fixedButtonContainer) {
+               if (EdgeTabsPlus.logger) {
+                   EdgeTabsPlus.logger.addLog(`Removing fixed button - DOM contains: ${host.shadowRoot.contains(this.fixedButtonContainer)}`);
+               }
+               if (host.shadowRoot.contains(this.fixedButtonContainer)) {
+                   host.shadowRoot.removeChild(this.fixedButtonContainer);
+               }
+               this.fixedButtonContainer = null;
+           }
+           
+           // Update state
+           this.isCollapsed = false;
+           
+           strip.classList.add('transitioning');
+           strip.classList.remove('collapsed');
+           
+           // Show and update the strip button
+           if (this.button) {
+               this.button.classList.remove('hidden');
+               this.button.setAttribute('aria-label', 'Collapse tab strip');
+               this.button.innerHTML = '▼';
+           }
             
-            // Show the toggle button inside the strip again
-            if (this.button) {
-                this.button.style.display = 'flex';
-            }
-            
-            // Remove transitioning class after animation completes
             setTimeout(() => {
                 strip.classList.remove('transitioning');
             }, 300);
 
-            // Log the action
             if (EdgeTabsPlus.logger) {
                 EdgeTabsPlus.logger.addLog(`Tab strip expanded`);
             }
         },
         
-        // Cleanup function to remove the fixed button when no longer needed
+        // Cleanup function to remove fixed button and reset states
         cleanup() {
-            if (this.fixedButtonContainer && document.body.contains(this.fixedButtonContainer)) {
-                document.body.removeChild(this.fixedButtonContainer);
+            if (EdgeTabsPlus.logger) {
+                EdgeTabsPlus.logger.addLog('Starting cleanup');
+            }
+            
+            if (this.fixedButtonContainer) {
+                // Always attempt removal if button exists
+                const host = document.getElementById('edgetabs-plus-host');
+                if (host && host.shadowRoot && host.shadowRoot.contains(this.fixedButtonContainer)) {
+                    host.shadowRoot.removeChild(this.fixedButtonContainer);
+                    if (EdgeTabsPlus.logger) {
+                        EdgeTabsPlus.logger.addLog('Fixed button removed during cleanup');
+                    }
+                }
                 this.fixedButtonContainer = null;
             }
         }
