@@ -1335,30 +1335,29 @@
                 .strip-toggle-btn {
                     --toggle-base-color: #09b4f6;
                     --toggle-hover-color: #0da2db;
-                    --toggle-bg-light: transparent;
-                    --toggle-bg-dark: transparent;
-                    --toggle-shadow-light: none;
-                    --toggle-shadow-dark: none;
                     --toggle-transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                    --button-size: 44px;  /* Mobile-first size */
+                    --button-padding: 16px;  /* Mobile-first padding */
 
-                    /* Prevent tap highlight and default button styling */
+                    /* Base reset and interaction prevention */
                     -webkit-tap-highlight-color: transparent !important;
                     -webkit-touch-callout: none !important;
                     user-select: none !important;
                     -webkit-user-select: none !important;
                     appearance: none !important;
                     -webkit-appearance: none !important;
+                    outline: none !important;
 
+                    /* Core layout */
                     display: flex !important;
-                    opacity: 1;
-                    visibility: visible;
-                    transition: opacity var(--toggle-transition), visibility var(--toggle-transition);
                     align-items: center !important;
                     justify-content: center !important;
-                    width: 28px !important;
-                    height: 28px !important;
-                    padding: 0 !important;
-                    margin-right: 8px !important;
+                    
+                    /* Consistent sizing using CSS variables */
+                    width: var(--button-size) !important;
+                    height: var(--button-size) !important;
+                    padding: var(--button-padding) !important;
+                    margin: 0 !important;
                     border: none !important;
                     border-radius: 4px !important;
                     background-color: transparent !important;
@@ -1404,15 +1403,13 @@
                 /* Fixed state styling with improved positioning */
                 .strip-toggle-btn.fixed {
                     position: fixed !important;
-                    bottom: 6px !important; /* Adjusted for perfect alignment */
-                    left: 12px !important; /* Adjusted for perfect alignment */
+                    bottom: 4px !important;  /* Reduced from 8px to better match regular button position */
+                    left: 4px !important;    /* Reduced from 8px to better match regular button position */
                     margin: 0 !important;
-                    transform: translateZ(0) !important; /* Force GPU acceleration */
                     z-index: 10000000 !important;
                     background-color: transparent !important;
                     box-shadow: none !important;
-                    transition: opacity var(--toggle-transition), transform var(--toggle-transition) !important;
-                    backface-visibility: hidden !important; /* Prevent rendering artifacts */
+                    transition: opacity var(--toggle-transition) !important;
                 }
 
                 /* Dark theme adjustments */
@@ -1485,28 +1482,17 @@
                 }
                 
                 /* Mobile optimizations */
+                /* Mobile optimizations */
                 @media (pointer: coarse) {
                     .strip-toggle-btn {
-                        width: 38px !important;
-                        height: 38px !important;
                         font-size: 22px !important;
                         border-radius: 6px !important;
-                        background-color: transparent !important;
                     }
 
-                    /* Ensure proper sizing in both normal and fixed states */
-                    .strip-toggle-btn,
+                    /* Adjust fixed button position for mobile */
                     .strip-toggle-btn.fixed {
-                        margin: 0 !important;
-                        padding: 8px !important;
-                    }
-
-                    /* Fixed position adjustments for mobile with consistent positioning */
-                    .strip-toggle-btn.fixed {
-                        bottom: 16px !important; /* Adjusted for perfect alignment with mobile size */
-                        left: 12px !important; /* Keep consistent with desktop position */
-                        transform: translateZ(0) !important;
-                        backface-visibility: hidden !important;
+                        bottom: 4px !important;  /* Reduced to match regular button position */
+                        left: 4px !important;   /* Reduced to match regular button position */
                     }
 
                     /* Enhanced touch target with larger hit area */

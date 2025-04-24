@@ -13,6 +13,22 @@
                 this.createToggleButton();
                 this.updateButtonState();
                 
+                // Log computed styles for debugging
+                if (EdgeTabsPlus.logger) {
+                    const button = this.button;
+                    if (button) {
+                        const computed = window.getComputedStyle(button);
+                        EdgeTabsPlus.logger.addLog(`Regular button computed styles:
+                            - position: ${computed.position}
+                            - transform: ${computed.transform}
+                            - margin: ${computed.margin}
+                            - left: ${computed.left}
+                            - bottom: ${computed.bottom}
+                            - width: ${computed.width}
+                            - height: ${computed.height}`);
+                    }
+                }
+                
                 if (this.isCollapsed) {
                     this.collapseTabStrip(false); // No animation on initial load
                 }
@@ -170,6 +186,21 @@
                 // Add to shadow DOM
                 this.fixedButtonContainer = fixedButton;
                 shadow.appendChild(fixedButton);
+                
+                // Log computed styles for fixed button
+                if (EdgeTabsPlus.logger) {
+                    requestAnimationFrame(() => {
+                        const computed = window.getComputedStyle(fixedButton);
+                        EdgeTabsPlus.logger.addLog(`Fixed button computed styles:
+                            - position: ${computed.position}
+                            - transform: ${computed.transform}
+                            - margin: ${computed.margin}
+                            - left: ${computed.left}
+                            - bottom: ${computed.bottom}
+                            - width: ${computed.width}
+                            - height: ${computed.height}`);
+                    });
+                }
             }
         },
         
