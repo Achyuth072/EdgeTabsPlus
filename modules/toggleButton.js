@@ -13,30 +13,11 @@
                 this.createToggleButton();
                 this.updateButtonState();
                 
-                // Log computed styles for debugging
-                if (EdgeTabsPlus.logger) {
-                    const button = this.button;
-                    if (button) {
-                        const computed = window.getComputedStyle(button);
-                        EdgeTabsPlus.logger.addLog(`Regular button computed styles:
-                            - position: ${computed.position}
-                            - transform: ${computed.transform}
-                            - margin: ${computed.margin}
-                            - left: ${computed.left}
-                            - bottom: ${computed.bottom}
-                            - width: ${computed.width}
-                            - height: ${computed.height}`);
-                    }
-                }
                 
                 if (this.isCollapsed) {
                     this.collapseTabStrip(false); // No animation on initial load
                 }
                 
-                // Log initialization
-                if (EdgeTabsPlus.logger) {
-                    EdgeTabsPlus.logger.addLog(`Toggle button initialized, collapsed state: ${this.isCollapsed}`);
-                }
             });
             
             return this;
@@ -82,10 +63,6 @@
         toggleTabStrip() {
             const oldState = this.isCollapsed;
             
-            if (EdgeTabsPlus.logger) {
-                EdgeTabsPlus.logger.addLog(`Starting toggle - current state: ${oldState}`);
-            }
-            
             // Perform DOM changes first
             if (oldState) {
                 // If currently collapsed, expand first
@@ -99,11 +76,7 @@
             this.isCollapsed = !oldState;
             
             // Store the state for persistence
-            chrome.storage.sync.set({ tabStripCollapsed: this.isCollapsed }, () => {
-                if (EdgeTabsPlus.logger) {
-                    EdgeTabsPlus.logger.addLog(`Tab strip collapsed state saved: ${this.isCollapsed}`);
-                }
-            });
+            chrome.storage.sync.set({ tabStripCollapsed: this.isCollapsed });
             
             // Update main button state
             this.updateButtonState();
@@ -147,17 +120,10 @@
                 }, 300);
             }
 
-            if (EdgeTabsPlus.logger) {
-                EdgeTabsPlus.logger.addLog(`Tab strip collapsed`);
-            }
         },
         
         // Create a fixed position toggle button within the shadow DOM
         createFixedToggleButton() {
-           if (EdgeTabsPlus.logger) {
-               EdgeTabsPlus.logger.addLog(`Creating fixed button - isCollapsed: ${this.isCollapsed}, fixedButtonContainer exists: ${!!this.fixedButtonContainer}`);
-           }
-           
            // Only create if we're in collapsed state and don't have a fixed button
            if (this.isCollapsed && !this.fixedButtonContainer) {
                 const host = document.getElementById('edgetabs-plus-host');
@@ -176,9 +142,6 @@
                     e.preventDefault();
                     e.stopPropagation();
                     if (this.isCollapsed) {
-                        if (EdgeTabsPlus.logger) {
-                            EdgeTabsPlus.logger.addLog('Fixed button clicked - expanding strip');
-                        }
                         this.toggleTabStrip();
                     }
                 });
@@ -187,20 +150,6 @@
                 this.fixedButtonContainer = fixedButton;
                 shadow.appendChild(fixedButton);
                 
-                // Log computed styles for fixed button
-                if (EdgeTabsPlus.logger) {
-                    requestAnimationFrame(() => {
-                        const computed = window.getComputedStyle(fixedButton);
-                        EdgeTabsPlus.logger.addLog(`Fixed button computed styles:
-                            - position: ${computed.position}
-                            - transform: ${computed.transform}
-                            - margin: ${computed.margin}
-                            - left: ${computed.left}
-                            - bottom: ${computed.bottom}
-                            - width: ${computed.width}
-                            - height: ${computed.height}`);
-                    });
-                }
             }
         },
         
@@ -213,9 +162,6 @@
            
            // Remove fixed button first to prevent any overlap
            if (this.fixedButtonContainer) {
-               if (EdgeTabsPlus.logger) {
-                   EdgeTabsPlus.logger.addLog(`Removing fixed button - DOM contains: ${host.shadowRoot.contains(this.fixedButtonContainer)}`);
-               }
                if (host.shadowRoot.contains(this.fixedButtonContainer)) {
                    host.shadowRoot.removeChild(this.fixedButtonContainer);
                }
@@ -239,25 +185,15 @@
                 strip.classList.remove('transitioning');
             }, 300);
 
-            if (EdgeTabsPlus.logger) {
-                EdgeTabsPlus.logger.addLog(`Tab strip expanded`);
-            }
         },
         
         // Cleanup function to remove fixed button and reset states
         cleanup() {
-            if (EdgeTabsPlus.logger) {
-                EdgeTabsPlus.logger.addLog('Starting cleanup');
-            }
-            
             if (this.fixedButtonContainer) {
                 // Always attempt removal if button exists
                 const host = document.getElementById('edgetabs-plus-host');
                 if (host && host.shadowRoot && host.shadowRoot.contains(this.fixedButtonContainer)) {
                     host.shadowRoot.removeChild(this.fixedButtonContainer);
-                    if (EdgeTabsPlus.logger) {
-                        EdgeTabsPlus.logger.addLog('Fixed button removed during cleanup');
-                    }
                 }
                 this.fixedButtonContainer = null;
             }
