@@ -7,17 +7,26 @@
         isCollapsed: false,
 
         init() {
-            // Check for stored state
+            // Start collapsed by default to prevent flash
+            this.isCollapsed = true;
+            
+            // Create and update button immediately
+            this.createToggleButton();
+            this.updateButtonState();
+            
+            // Apply initial collapsed state without animation
+            this.collapseTabStrip(false);
+            
+            // Then check stored state
             chrome.storage.sync.get(['tabStripCollapsed'], (result) => {
-                this.isCollapsed = result.tabStripCollapsed === true;
-                this.createToggleButton();
-                this.updateButtonState();
+                const shouldBeCollapsed = result.tabStripCollapsed !== false; // Default to collapsed if not set
                 
-                
-                if (this.isCollapsed) {
-                    this.collapseTabStrip(false); // No animation on initial load
+                // Only expand if stored state is different
+                if (!shouldBeCollapsed && this.isCollapsed) {
+                    this.expandTabStrip();
+                    this.isCollapsed = false;
+                    this.updateButtonState();
                 }
-                
             });
             
             return this;
