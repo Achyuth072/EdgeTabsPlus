@@ -945,13 +945,17 @@
         
         getScrollingStyles() {
             return `
-                /* Enhanced scrolling and touch interaction */
+                /* Enhanced scrolling and touch interaction with optimized performance */
                 .tabs-list {
                     scroll-snap-type: x proximity;
-                    scroll-behavior: smooth;
+                    scroll-behavior: auto; /* Let JS handle smooth scrolling */
                     -webkit-overflow-scrolling: touch;
                     overscroll-behavior-x: contain;
                     cursor: grab;
+                    /* Optimize GPU layers */
+                    transform: translateZ(0);
+                    -webkit-transform: translateZ(0);
+                    will-change: scroll-position; /* More specific than transform */
                 }
                 
                 .tabs-list.grabbing {
@@ -985,9 +989,18 @@
 
                 /* Performance optimizations */
                 .tabs-list, .tab-item {
-                    will-change: transform;
+                    /* Remove transform hints during scroll */
+                    transition: none !important;
                     backface-visibility: hidden;
                     -webkit-backface-visibility: hidden;
+                    -webkit-font-smoothing: antialiased;
+                    /* Force composition layer */
+                    transform: translate3d(0,0,0);
+                }
+
+                /* Restore transitions when not scrolling */
+                .tabs-list:not(.grabbing) .tab-item {
+                    transition: transform 0.2s ease-out;
                 }
                 
                 /* Scroll indicators with smooth transitions */
@@ -1104,6 +1117,15 @@
                     .tabs-list {
                         overscroll-behavior-x: none;
                         -webkit-overflow-scrolling: touch;
+                        /* Enhanced touch performance */
+                        touch-action: manipulation;
+                        pointer-events: auto;
+                    }
+
+                    /* Reduce motion during scroll */
+                    .tabs-list.grabbing .tab-item {
+                        animation: none !important;
+                        transition: none !important;
                     }
                 }
 

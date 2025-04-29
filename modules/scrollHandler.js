@@ -159,23 +159,31 @@
         },
 
         handleHorizontalScroll(event) {
-            // Don't interrupt user scrolling with snapping
-            if (EdgeTabsPlus.touchHandler && EdgeTabsPlus.touchHandler.isDragging) {
-                return;
-            }
-            
             const tabsList = event.target;
             if (!tabsList || !tabsList.classList.contains('tabs-list')) {
                 return;
             }
-            
-            // Update scroll indicators
-            this.updateScrollIndicators(tabsList);
-            
-            // Clear any previous scroll end timeout
+
+            // Early exit if we're in an active touch drag
+            if (EdgeTabsPlus.touchHandler && EdgeTabsPlus.touchHandler.isDragging) {
+                // Still track position but don't update indicators during drag
+                this.lastScrollPosition = tabsList.scrollLeft;
+                return;
+            }
+
+            // Debounce scroll indicator updates to reduce visual jitter
             if (this.scrollEndTimeout) {
                 clearTimeout(this.scrollEndTimeout);
             }
+
+            this.scrollEndTimeout = setTimeout(() => {
+                requestAnimationFrame(() => {
+                    // Only update indicators if we're not in a drag operation
+                    if (!EdgeTabsPlus.touchHandler?.isDragging) {
+                        this.updateScrollIndicators(tabsList);
+                    }
+                });
+            }, 32); // ~2 frames at 60fps
         },
         
         updateScrollIndicators(tabsList) {
@@ -183,12 +191,23 @@
                 tabsList = document.getElementById('tabs-list');
                 if (!tabsList) return;
             }
+
+            // Use percentage-based thresholds instead of fixed pixels
+            const scrollWidth = tabsList.scrollWidth;
+            const clientWidth = tabsList.clientWidth;
+            const maxScroll = scrollWidth - clientWidth;
+            const currentScroll = tabsList.scrollLeft;
+
+            // Use 2% of the viewport width as threshold
+            const threshold = clientWidth * 0.02;
             
-            const hasLeftScroll = tabsList.scrollLeft > 10;
-            const hasRightScroll = tabsList.scrollLeft < (tabsList.scrollWidth - tabsList.clientWidth - 10);
+            const hasLeftScroll = currentScroll > threshold;
+            const hasRightScroll = currentScroll < (maxScroll - threshold);
             
-            tabsList.classList.toggle('scroll-left', hasLeftScroll);
-            tabsList.classList.toggle('scroll-right', hasRightScroll);
+            requestAnimationFrame(() => {
+                tabsList.classList.toggle('scroll-left', hasLeftScroll);
+                tabsList.classList.toggle('scroll-right', hasRightScroll);
+            });
         },
 
         snapToNearestTabAfterScroll(tabsList) {
