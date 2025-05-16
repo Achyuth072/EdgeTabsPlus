@@ -1,6 +1,42 @@
 // Shared state
 let sharedLastScrollPosition = 0;
 
+// Helper to forward logs to all content scripts for Eruda
+function forwardLogToContentScript(logString) {
+    // Log that this function is being called (this specific log will NOT be forwarded, for safety)
+    console.warn(`BG_META: forwardLogToContentScript attempting to process: ${logString.substring(0, 100)}...`); // Log to native console
+
+    chrome.tabs.query({}, (tabs) => {
+        // Log if tabs are found or not (this specific log will NOT be forwarded)
+        console.warn(`BG_META: chrome.tabs.query found ${tabs ? tabs.length : 'no'} tabs.`);
+
+        if (!tabs || tabs.length === 0) {
+            // Log that no tabs were found to forward to (this specific log will NOT be forwarded)
+            console.warn(`BG_META: No active tabs found to forward log: ${logString.substring(0,100)}...`);
+            return;
+        }
+
+        tabs.forEach(tab => {
+            // Log attempt to send to each tab (this specific log will NOT be forwarded)
+            console.warn(`BG_META: Attempting to send to tab ${tab.id}: ${logString.substring(0,100)}...`);
+
+            chrome.tabs.sendMessage(
+                tab.id,
+                { action: 'forwardLogToEruda', logEntry: logString }, // This is the original logString being forwarded
+                () => {
+                    if (chrome.runtime.lastError) {
+                        // Log send error (this specific log will NOT be forwarded)
+                        console.warn('BG_META: Error forwarding log to tab ' + tab.id + ':', chrome.runtime.lastError.message);
+                    } else {
+                        // Log successful send (this specific log will NOT be forwarded)
+                        console.warn(`BG_META: Successfully sent to tab ${tab.id}: ${logString.substring(0,100)}...`);
+                    }
+                }
+            );
+        });
+    });
+}
+
 // Debounce helper
 let notifyTimeout = null;
 const DEBOUNCE_DELAY = 50; // 50ms debounce delay
@@ -13,6 +49,8 @@ function notifyTabsUpdated(immediate = false) {
     }
 
     const sendUpdate = () => {
+        // LOG: Called sendUpdate with immediate flag
+        forwardLogToContentScript(`BG: sendUpdate - Called. Immediate: ${immediate}`);
         chrome.tabs.query({ currentWindow: true }, (tabs) => {
             const tabData = tabs.map(tab => ({
                 id: tab.id,
@@ -21,7 +59,8 @@ function notifyTabsUpdated(immediate = false) {
                 favIconUrl: '', // Let content script handle favicon resolution
                 url: tab.url || ''  // Always include URL for favicon resolution
             }));
-            console.log('Sending tabs data:', tabData);
+            // LOG: Sending tabs update to content scripts
+            forwardLogToContentScript(`BG: sendUpdate - Sending tabs update to content scripts. Tab count: ${tabData.length}, Full data: ${JSON.stringify(tabData)}`);
             
             // Send to all contexts using proper method
             chrome.tabs.query({}, allTabs => {
@@ -141,12 +180,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Enhanced tab update handling
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    // LOG: onUpdated event data
+    forwardLogToContentScript(`BG: chrome.tabs.onUpdated - Event data: ${JSON.stringify({ tabId, changeInfo, tab })}`);
+    
+    // For title updates, immediately update the tabstrip (important for background tabs)
+    if (changeInfo.title) {
+        forwardLogToContentScript(`BG: chrome.tabs.onUpdated - Title changed for tab ${tabId}: ${changeInfo.title}`);
+        notifyTabsUpdated(true); // Use immediate=true to update without debouncing
+        return;
+    }
+    
     // Specifically log favicon updates for debugging
     if (changeInfo.favIconUrl) {
         console.log('Favicon updated for tab:', tabId, changeInfo.favIconUrl);
     }
     
-    // Debounce updates
+    // Debounce other types of updates
     notifyTabsUpdated();
 });
 
@@ -158,7 +207,28 @@ const addTabListener = (event) => {
 };
 
 // Set up tab event listeners
-['onCreated', 'onRemoved', 'onAttached', 'onActivated'].forEach(addTabListener);
+// Set up tab event listeners
+chrome.tabs.onCreated.addListener((tab) => {
+    // LOG: onCreated event data
+    forwardLogToContentScript(`BG: chrome.tabs.onCreated - New tab data: ${JSON.stringify(tab)}`);
+    notifyTabsUpdated(true); // Immediate update for new tabs
+});
+['onRemoved', 'onAttached', 'onActivated'].forEach(addTabListener);
+
+// WebNavigation listeners to diagnose background tab creation issue
+chrome.webNavigation.onCreatedNavigationTarget.addListener(function(details) {
+    const logEntry = `BG_WEBNAV: onCreatedNavigationTarget - ${JSON.stringify(details)}`;
+    forwardLogToContentScript(logEntry);
+});
+
+chrome.webNavigation.onCommitted.addListener(function(details) {
+    // We're only interested in top-level frame navigations
+    if (details.frameId === 0) {
+        const logEntry = `BG_WEBNAV: onCommitted (main frame) - ${JSON.stringify(details)}`;
+        forwardLogToContentScript(logEntry);
+        notifyTabsUpdated(true); // Trigger update of the tabstrip
+    }
+});
 
 // Log extension startup
 console.log('EdgeTabs+ background script initialized');

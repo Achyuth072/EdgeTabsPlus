@@ -73,6 +73,9 @@
         },
 
         async renderTabs(tabs) {
+            // LOG: Called renderTabs with tabs
+            const logMsg6 = `TM: renderTabs - Called with tabs: ${JSON.stringify(tabs)}`;
+            window.postMessage({ extLog: logMsg6 }, '*');
             try {
                 // Deduplicate tabs by id
                 const uniqueTabs = Array.from(new Map(tabs.map(tab => [tab.id, tab])).values());
@@ -292,12 +295,21 @@
         },
 
         setupMessageListeners() {
-            // Setup message listener for tab updates
+            // Setup message listener for tab updates and forwarded logs from background
             chrome.runtime.onMessage.addListener((message) => {
                 if (message.action === 'tabsUpdated' && message.tabs) {
+                    // LOG: Received tabsUpdated message
+                    const logMsg1 = `TM: Message Listener - Received "tabsUpdated". Tab count: ${message.tabs.length}, Full data: ${JSON.stringify(message.tabs)}`;
+                    window.postMessage({ extLog: logMsg1 }, '*');
                     // Queue this update with scroll position
                     EdgeTabsPlus.logger.debug(`Queueing tab update with ${message.tabs.length} tabs and scroll position ${message.sharedScrollPosition}`);
                     this.queueTabUpdate(message.tabs, message.sharedScrollPosition);
+                }
+
+                // Listen for logs forwarded from background.js and relay to Eruda
+                if (message.action === 'forwardLogToEruda' && message.logEntry) {
+                    window.postMessage({ extLog: message.logEntry }, '*');
+                    // Optionally, could send a response here if needed
                 }
             });
 
@@ -348,7 +360,7 @@
             }
 
             this.pendingRender = true;
-            
+
             // Get most recent update
             const update = this.tabUpdateQueue.pop();
             // Clear queue since we're using most recent state
@@ -357,6 +369,16 @@
             // Deduplicate tabs
             const uniqueTabs = Array.from(new Map(update.tabs.map(tab => [tab.id, tab])).values());
             const newState = JSON.stringify(uniqueTabs);
+
+            // LOG: Compare new and old tab states
+            const logMsg2 = `TM: processNextUpdate - Comparing states. New state tab count: ${uniqueTabs.length}, Old state tab count: ${JSON.parse(this.lastTabsState || '[]').length}`;
+            window.postMessage({ extLog: logMsg2 }, '*');
+            const logMsg3 = `TM: processNextUpdate - New state: ${newState}`;
+            window.postMessage({ extLog: logMsg3 }, '*');
+            const logMsg4 = `TM: processNextUpdate - Last state: ${this.lastTabsState}`;
+            window.postMessage({ extLog: logMsg4 }, '*');
+            const logMsg5 = `TM: processNextUpdate - States equal: ${newState === this.lastTabsState}`;
+            window.postMessage({ extLog: logMsg5 }, '*');
 
             if (newState !== this.lastTabsState) {
                 EdgeTabsPlus.logger.debug(`Processing ${uniqueTabs.length} deduplicated tabs`);
