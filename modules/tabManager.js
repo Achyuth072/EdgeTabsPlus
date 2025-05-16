@@ -174,17 +174,93 @@
                     // Update title if changed
                     const titleSpan = tabElement.querySelector('.tab-title');
                     let cleanTitle = 'New Tab';
+                    
+                    // Log title update for debugging
+                    EdgeTabsPlus.logger.debug(`[TitleUpdate ${tab.id}] Processing title "${tab.title}" for ${tab.active ? 'active' : 'background'} tab with status "${tab.status}"`);
+                    
                     if (tab.title) {
                         if (tab.title === 'edge://newtab') {
                             cleanTitle = 'New tab';
+                        } else if (tab.title === 'Loading...') {
+                            // For any tab that still shows "Loading..." (even if not complete),
+                            // try to extract title from URL as a fallback
+                            EdgeTabsPlus.logger.debug(`[TitleUpdate ${tab.id}] Tab title is still "Loading..." with status "${tab.status}" - Extracting from URL`);
+                            try {
+                                if (tab.url && tab.url.startsWith('http')) {
+                                    const urlObj = new URL(tab.url);
+                                    const pathSegments = urlObj.pathname.split('/').filter(segment => segment);
+                                    
+                                    if (pathSegments.length > 0) {
+                                        const lastSegment = pathSegments[pathSegments.length - 1]
+                                            .replace(/[-_]/g, ' ')
+                                            .replace(/\.\w+$/, '');
+                                        
+                                        if (lastSegment && lastSegment.length > 1) {
+                                            cleanTitle = lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1);
+                                        } else {
+                                            cleanTitle = urlObj.hostname.replace('www.', '');
+                                        }
+                                    } else {
+                                        cleanTitle = urlObj.hostname.replace('www.', '');
+                                    }
+                                }
+                            } catch (err) {
+                                // Keep the title we got from background.js
+                                cleanTitle = tab.title;
+                            }
                         } else {
+                            // First clean up common suffixes
                             cleanTitle = tab.title
                                 .replace(/ at DuckDuckGo$/i, '')
                                 .replace(/ - DuckDuckGo$/i, '')
+                                .replace(/ - Google Search$/i, '')
+                                .replace(/ - Bing$/i, '')
+                                .replace(/ - Brave Search$/i, '')
+                                .replace(/ - YouTube$/i, '')
                                 .split(' - ')[0]
                                 .trim();
+                            
+                            // Only apply the URL-like title handling if the title actually is a URL
+                            // This prevents domain names from being added to actual page titles
+                            const looksExactlyLikeURL =
+                                cleanTitle.startsWith('http://') ||
+                                cleanTitle.startsWith('https://') ||
+                                cleanTitle.startsWith('www.') ||
+                                (tab.url && cleanTitle === tab.url);
+                            
+                            // If title is actually a URL (not just contains domain-like text)
+                            if (looksExactlyLikeURL && tab.url) {
+                                try {
+                                    // Only try to parse URLs that are likely to be valid
+                                    if (tab.url.startsWith('http')) {
+                                        const urlObj = new URL(tab.url);
+                                        cleanTitle = tab.status === 'complete' ? urlObj.hostname.replace('www.', '') : 'Loading...';
+                                    } else if (cleanTitle === tab.url) {
+                                        // For non-http URLs, simpler handling
+                                        cleanTitle = 'Loading...';
+                                    }
+                                } catch (error) {
+                                    // If URL parsing fails, fall back to a simple match check
+                                    if (cleanTitle === tab.url) {
+                                        cleanTitle = 'Loading...';
+                                    }
+                                }
+                            }
                         }
                     }
+                    
+                    // Only restore original titles for tabs that aren't already cleaned
+                    // This prevents removing our title cleaning when switching tabs
+                    if (tab.status === 'complete' && tab.title && tab.title !== 'Loading...' &&
+                        !tab.title.startsWith('http') && !tab.title.includes('/') &&
+                        // Don't override if we just cleaned a title with domain suffix
+                        tab.title === cleanTitle) {
+                        // Keep the already cleaned title
+                        EdgeTabsPlus.logger.debug(`[TitleUpdate ${tab.id}] Using original title as it's not a URL and hasn't been cleaned`);
+                    }
+                    
+                    // Compare original and cleaned title to debug title cleaning
+                    window.postMessage({ extLog: `[TitleUpdate ${tab.id}] Title cleaning: original="${tab.title}", cleaned="${cleanTitle}"` }, '*');
                     
                     if (titleSpan.textContent !== cleanTitle) {
                         titleSpan.textContent = cleanTitle;
@@ -368,6 +444,18 @@
 
             // Deduplicate tabs
             const uniqueTabs = Array.from(new Map(update.tabs.map(tab => [tab.id, tab])).values());
+            
+            // Special handling for background tab title updates
+            // Look for background tabs that either:
+            // 1. Are complete and not active (original condition)
+            // 2. Have a real title (not "Loading...") regardless of status
+            const hasCompletedTabsToUpdate = update.tabs.some(tab =>
+                (!tab.active) && (
+                    tab.status === 'complete' ||
+                    (tab.title && tab.title !== 'Loading...')
+                )
+            );
+            
             const newState = JSON.stringify(uniqueTabs);
 
             // LOG: Compare new and old tab states
@@ -379,8 +467,12 @@
             window.postMessage({ extLog: logMsg4 }, '*');
             const logMsg5 = `TM: processNextUpdate - States equal: ${newState === this.lastTabsState}`;
             window.postMessage({ extLog: logMsg5 }, '*');
+            
+            if (hasCompletedTabsToUpdate) {
+                window.postMessage({ extLog: `TM: processNextUpdate - Force update for background tabs with real titles (status: ${update.tabs.filter(t => !t.active && t.title && t.title !== 'Loading...').map(t => t.status).join(',')})` }, '*');
+            }
 
-            if (newState !== this.lastTabsState) {
+            if (newState !== this.lastTabsState || hasCompletedTabsToUpdate) {
                 EdgeTabsPlus.logger.debug(`Processing ${uniqueTabs.length} deduplicated tabs`);
                 this.lastTabsState = newState;
                 

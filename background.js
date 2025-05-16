@@ -52,13 +52,50 @@ function notifyTabsUpdated(immediate = false) {
         // LOG: Called sendUpdate with immediate flag
         forwardLogToContentScript(`BG: sendUpdate - Called. Immediate: ${immediate}`);
         chrome.tabs.query({ currentWindow: true }, (tabs) => {
-            const tabData = tabs.map(tab => ({
-                id: tab.id,
-                title: tab.title || 'New Tab',
-                active: tab.active,
-                favIconUrl: '', // Let content script handle favicon resolution
-                url: tab.url || ''  // Always include URL for favicon resolution
-            }));
+            const tabData = tabs.map(tab => {
+                // Detect if the title appears to be a URL
+                let title = tab.title || 'New Tab';
+                
+                // Clean common search engine and site suffixes
+                const originalTitle = title;
+                if (tab.status === 'complete') {
+                    // Clean up common suffixes for search engines and popular sites
+                    title = title
+                        .replace(/ at DuckDuckGo$/i, '')
+                        .replace(/ - DuckDuckGo$/i, '')
+                        .replace(/ - Google Search$/i, '')
+                        .replace(/ - Bing$/i, '')
+                        .replace(/ - Brave Search$/i, '')
+                        .replace(/ - YouTube$/i, '')
+                        .split(' - ')[0]
+                        .trim();
+                }
+                
+                // More comprehensive URL detection
+                const isURLTitle = originalTitle.startsWith('http://') ||
+                                   originalTitle.startsWith('https://') ||
+                                   originalTitle.startsWith('www.') ||
+                                   (tab.url && originalTitle === tab.url) ||
+                                   // Check for domain-like patterns (containing domain TLDs)
+                                   /\w+\.\w+\//.test(originalTitle) ||
+                                   // Check if title contains domain suffixes
+                                   /(\.com|\.org|\.net|\.io|\.co|\.edu|\.gov|\.wiki)/.test(originalTitle);
+                
+                // If the title is a URL or looks like one, use a placeholder
+                // Also ensure status check works properly with both loaded and loading states
+                if ((isURLTitle || originalTitle.includes('/')) && (tab.status !== 'complete')) {
+                    title = 'Loading...';
+                }
+                
+                return {
+                    id: tab.id,
+                    title: title,
+                    active: tab.active,
+                    favIconUrl: '', // Let content script handle favicon resolution
+                    url: tab.url || '',  // Always include URL for favicon resolution
+                    status: tab.status || '' // Include tab status
+                };
+            });
             // LOG: Sending tabs update to content scripts
             forwardLogToContentScript(`BG: sendUpdate - Sending tabs update to content scripts. Tab count: ${tabData.length}, Full data: ${JSON.stringify(tabData)}`);
             
@@ -183,10 +220,37 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     // LOG: onUpdated event data
     forwardLogToContentScript(`BG: chrome.tabs.onUpdated - Event data: ${JSON.stringify({ tabId, changeInfo, tab })}`);
     
-    // For title updates, immediately update the tabstrip (important for background tabs)
-    if (changeInfo.title) {
-        forwardLogToContentScript(`BG: chrome.tabs.onUpdated - Title changed for tab ${tabId}: ${changeInfo.title}`);
-        notifyTabsUpdated(true); // Use immediate=true to update without debouncing
+    // For title or status changes, immediately update the tabstrip
+    if (changeInfo.title || changeInfo.status) {
+        const eventType = changeInfo.title ? 'title' : 'status';
+        const value = changeInfo.title || changeInfo.status;
+        forwardLogToContentScript(`BG: chrome.tabs.onUpdated - ${eventType} changed for tab ${tabId}: ${value}`);
+        
+        // Always update immediately for title changes or status='complete' changes
+        // This ensures background tabs update their titles as soon as possible
+        const immediate = true;
+        
+        // Special handling for meaningful title changes in background tabs
+        const isNonLoadingTitle = changeInfo.title &&
+                                  changeInfo.title !== 'Loading...' &&
+                                  !changeInfo.title.startsWith('http://') &&
+                                  !changeInfo.title.startsWith('https://');
+        
+        // Log the update reason for debugging
+        let reason = '';
+        if (changeInfo.status === 'complete') {
+            reason = 'Tab completed loading';
+        } else if (isNonLoadingTitle) {
+            reason = 'Real title received for tab';
+        } else if (changeInfo.title) {
+            reason = 'Title changed';
+        } else {
+            reason = 'Other status change';
+        }
+        
+        forwardLogToContentScript(`BG: Immediate update triggered - Reason: ${reason} for tab ${tabId}${tab.active ? ' (active)' : ' (background)'}`);
+        
+        notifyTabsUpdated(immediate);
         return;
     }
     
