@@ -15,7 +15,7 @@
         db: null,
 
         async init() {
-            EdgeTabsPlus.logger.addLog('Initializing favicon handler...');
+            EdgeTabsPlus.logToEruda('Initializing favicon handler...', 'log');
             await this.initDatabase();
             await this.loadCacheFromDB();
             return this;
@@ -27,13 +27,13 @@
                     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
                     request.onerror = () => {
-                        EdgeTabsPlus.logger.error('Failed to open IndexedDB');
+                        EdgeTabsPlus.logToEruda('Failed to open IndexedDB', 'error');
                         resolve(); // Continue without persistence
                     };
 
                     request.onsuccess = (event) => {
                         this.db = event.target.result;
-                        EdgeTabsPlus.logger.addLog('IndexedDB initialized');
+                        EdgeTabsPlus.logToEruda('IndexedDB initialized', 'log');
                         resolve();
                     };
 
@@ -46,7 +46,7 @@
                     };
                 });
             } catch (error) {
-                EdgeTabsPlus.logger.error('IndexedDB initialization failed:', error);
+                EdgeTabsPlus.logToEruda(`IndexedDB initialization failed: ${error}`, 'error');
             }
         },
 
@@ -67,16 +67,16 @@
                                 this.cache.set(item.url, item.favicon);
                             }
                         });
-                        EdgeTabsPlus.logger.addLog(`Loaded ${this.cache.size} favicons from DB`);
+                        EdgeTabsPlus.logToEruda(`Loaded ${this.cache.size} favicons from DB`, 'log');
                         resolve();
                     };
                     request.onerror = () => {
-                        EdgeTabsPlus.logger.error('Failed to load cache from DB');
+                        EdgeTabsPlus.logToEruda('Failed to load cache from DB', 'error');
                         resolve();
                     };
                 });
             } catch (error) {
-                EdgeTabsPlus.logger.error('Error loading cache from DB:', error);
+                EdgeTabsPlus.logToEruda(`Error loading cache from DB: ${error}`, 'error');
             }
         },
 
@@ -92,7 +92,7 @@
                     timestamp: Date.now()
                 });
             } catch (error) {
-                EdgeTabsPlus.logger.error('Failed to save favicon to DB:', error);
+                EdgeTabsPlus.logToEruda(`Failed to save favicon to DB: ${error}`, 'error');
             }
         },
 
@@ -133,18 +133,18 @@
                         }
                     }
                     if (prefetchCount > 0) {
-                        EdgeTabsPlus.logger.debug(`[PREFETCH] Started for ${prefetchCount} tabs`);
+                        EdgeTabsPlus.logToEruda(`[PREFETCH] Started for ${prefetchCount} tabs`, 'debug');
                     }
                 });
             } catch (error) {
-                EdgeTabsPlus.logger.error('[PREFETCH] Failed:', error);
+                EdgeTabsPlus.logToEruda(`[PREFETCH] Failed: ${error}`, 'error');
             }
         },
 
         async getCachedFavicon(tab) {
             // Skip cache for Edge URLs to ensure we always load fresh Edge icon
             if (tab.url.startsWith('edge://') || tab.url === 'chrome-native://newtab/') {
-                EdgeTabsPlus.logger.debug(`[CACHE] Bypassing cache for Edge URL: ${tab.url}`);
+                EdgeTabsPlus.logToEruda(`[CACHE] Bypassing cache for Edge URL: ${tab.url}`, 'debug');
                 return null;
             }
 
@@ -153,7 +153,7 @@
             // Check memory cache
             const memoryCache = this.cache.get(normalizedUrl);
             if (memoryCache) {
-                EdgeTabsPlus.logger.debug(`[CACHE] Memory hit for ${normalizedUrl}`);
+                EdgeTabsPlus.logToEruda(`[CACHE] Memory hit for ${normalizedUrl}`, 'debug');
                 return memoryCache;
             }
 
@@ -170,16 +170,16 @@
                     });
 
                     if (result) {
-                        EdgeTabsPlus.logger.debug(`[CACHE] DB hit for ${normalizedUrl}`);
+                        EdgeTabsPlus.logToEruda(`[CACHE] DB hit for ${normalizedUrl}`, 'debug');
                         this.cache.set(normalizedUrl, result.favicon); // Populate memory cache
                         return result.favicon;
                     }
                 } catch (error) {
-                    EdgeTabsPlus.logger.error('Error checking DB cache:', error);
+                    EdgeTabsPlus.logToEruda(`Error checking DB cache: ${error}`, 'error');
                 }
             }
 
-            EdgeTabsPlus.logger.debug(`[CACHE] Miss for ${normalizedUrl}`);
+            EdgeTabsPlus.logToEruda(`[CACHE] Miss for ${normalizedUrl}`, 'debug');
             return null;
         },
 
@@ -187,7 +187,7 @@
             const normalizedUrl = this.getNormalizedUrl(tab.url);
             this.cache.set(normalizedUrl, faviconUrl);
             await this.saveToDB(normalizedUrl, faviconUrl);
-            EdgeTabsPlus.logger.addLog(`Cached favicon for ${normalizedUrl}`);
+            EdgeTabsPlus.logToEruda(`Cached favicon for ${normalizedUrl}`, 'log');
         },
 
         getDefaultIcon() {
@@ -196,7 +196,7 @@
 
         async getEdgeIcon() {
             const iconUrl = chrome.runtime.getURL('icons/edge-logo.png');
-            EdgeTabsPlus.logger.debug(`[getEdgeIcon] Generated Edge icon URL: ${iconUrl}`);
+            EdgeTabsPlus.logToEruda(`[getEdgeIcon] Generated Edge icon URL: ${iconUrl}`, 'debug');
             
             try {
                 // Ensure the URL is accessible
@@ -204,10 +204,10 @@
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                EdgeTabsPlus.logger.debug(`[getEdgeIcon] Icon fetch successful: ${response.ok}`);
+                EdgeTabsPlus.logToEruda(`[getEdgeIcon] Icon fetch successful: ${response.ok}`, 'debug');
                 return iconUrl;
             } catch (error) {
-                EdgeTabsPlus.logger.error(`[getEdgeIcon] Icon fetch failed: ${error}`);
+                EdgeTabsPlus.logToEruda(`[getEdgeIcon] Icon fetch failed: ${error}`, 'error');
                 // Return the URL anyway since the error might be temporary
                 return iconUrl;
             }
@@ -218,7 +218,7 @@
                 const hostname = new URL(url).hostname;
                 return `https://icons.duckduckgo.com/ip3/${hostname}.ico`;
             } catch (error) {
-                EdgeTabsPlus.logger.error(`Failed to get DuckDuckGo favicon: ${error.message}`);
+                EdgeTabsPlus.logToEruda(`Failed to get DuckDuckGo favicon: ${error.message}`, 'error');
                 return null;
             }
         },
@@ -229,7 +229,7 @@
 
              // Check if already loading (this check is crucial here too)
              if (this.loadingPromises.has(normalizedUrl)) {
-                 EdgeTabsPlus.logger.debug(`[LOAD_INTERNAL] Already loading ${normalizedUrl}`);
+                 EdgeTabsPlus.logToEruda(`[LOAD_INTERNAL] Already loading ${normalizedUrl}`, 'debug');
                  return this.loadingPromises.get(normalizedUrl);
              }
 
@@ -237,14 +237,14 @@
                  try {
                      // Edge internal pages (including chrome-native://newtab/)
                      if (tab.url.startsWith('edge://') || tab.url === 'chrome-native://newtab/') {
-                         EdgeTabsPlus.logger.debug(`[LOAD_INTERNAL] Using Edge icon for ${tab.url}`);
+                         EdgeTabsPlus.logToEruda(`[LOAD_INTERNAL] Using Edge icon for ${tab.url}`, 'debug');
                          
                          // Clear any cached version from both memory and IndexedDB
                          await this.clearCache(tab.url);
                          
                          // Force a fresh icon load
                          const edgeIcon = this.getEdgeIcon();
-                         EdgeTabsPlus.logger.debug(`[LOAD_INTERNAL] Generated Edge icon URL: ${edgeIcon}`);
+                         EdgeTabsPlus.logToEruda(`[LOAD_INTERNAL] Generated Edge icon URL: ${edgeIcon}`, 'debug');
                          
                          // Set new favicon with cache busting
                          await this.setCachedFavicon(tab, edgeIcon + '?t=' + Date.now());
@@ -263,7 +263,7 @@
                      // Try DuckDuckGo service
                      const duckDuckGoUrl = this.getDuckDuckGoFavicon(tab.url);
                      if (duckDuckGoUrl) {
-                         EdgeTabsPlus.logger.debug(`[LOAD_INTERNAL] Using DuckDuckGo favicon for ${normalizedUrl}`);
+                         EdgeTabsPlus.logToEruda(`[LOAD_INTERNAL] Using DuckDuckGo favicon for ${normalizedUrl}`, 'debug');
                          await this.setCachedFavicon(tab, duckDuckGoUrl);
                          resolve(duckDuckGoUrl);
                          return;
@@ -271,20 +271,20 @@
 
                      // Fallback to native favicon
                      if (tab.favIconUrl) {
-                         EdgeTabsPlus.logger.debug(`[LOAD_INTERNAL] Using native favicon for ${normalizedUrl}`);
+                         EdgeTabsPlus.logToEruda(`[LOAD_INTERNAL] Using native favicon for ${normalizedUrl}`, 'debug');
                          await this.setCachedFavicon(tab, tab.favIconUrl);
                          resolve(tab.favIconUrl);
                          return;
                      }
 
                      // Default icon as last resort
-                     EdgeTabsPlus.logger.debug(`[LOAD_INTERNAL] Using default icon for ${normalizedUrl}`);
+                     EdgeTabsPlus.logToEruda(`[LOAD_INTERNAL] Using default icon for ${normalizedUrl}`, 'debug');
                      const defaultIcon = this.getDefaultIcon();
                      await this.setCachedFavicon(tab, defaultIcon);
                      resolve(defaultIcon);
 
                  } catch (error) {
-                     EdgeTabsPlus.logger.error(`[LOAD_INTERNAL] Error loading favicon: ${error.message}`);
+                     EdgeTabsPlus.logToEruda(`[LOAD_INTERNAL] Error loading favicon: ${error.message}`, 'error');
                      resolve(this.getDefaultIcon());
                  } finally {
                      this.loadingPromises.delete(normalizedUrl);
@@ -298,17 +298,17 @@
         // Public-facing load function with debounce
         async loadFavicon(tab) {
             if (!tab?.url) {
-                EdgeTabsPlus.logger.debug('[LOAD] No URL provided, using default icon');
+                EdgeTabsPlus.logToEruda('[LOAD] No URL provided, using default icon', 'debug');
                 return this.getDefaultIcon();
             }
 
             const normalizedUrl = this.getNormalizedUrl(tab.url);
-            EdgeTabsPlus.logger.debug(`[LOAD] Request for ${normalizedUrl} (tab ${tab.id})`);
+            EdgeTabsPlus.logToEruda(`[LOAD] Request for ${normalizedUrl} (tab ${tab.id})`, 'debug');
 
             // Quick cache check before debouncing
             const quickCacheCheck = await this.getCachedFavicon(tab);
             if (quickCacheCheck) {
-                EdgeTabsPlus.logger.debug(`[LOAD] Using cached favicon for ${normalizedUrl}`);
+                EdgeTabsPlus.logToEruda(`[LOAD] Using cached favicon for ${normalizedUrl}`, 'debug');
                 return quickCacheCheck;
             }
 
@@ -321,7 +321,7 @@
         async clearCache(url = null) {
             if (url) {
                 const normalizedUrl = this.getNormalizedUrl(url);
-                EdgeTabsPlus.logger.debug(`[CACHE] Clearing cache for specific URL: ${normalizedUrl}`);
+                EdgeTabsPlus.logToEruda(`[CACHE] Clearing cache for specific URL: ${normalizedUrl}`, 'debug');
                 // Clear from memory
                 this.cache.delete(normalizedUrl);
                 // Clear from DB
@@ -330,9 +330,9 @@
                         const transaction = this.db.transaction(STORE_NAME, 'readwrite');
                         const store = transaction.objectStore(STORE_NAME);
                         await store.delete(normalizedUrl);
-                        EdgeTabsPlus.logger.debug(`[CACHE] Cleared ${normalizedUrl} from IndexedDB`);
+                        EdgeTabsPlus.logToEruda(`[CACHE] Cleared ${normalizedUrl} from IndexedDB`, 'debug');
                     } catch (error) {
-                        EdgeTabsPlus.logger.error(`Failed to clear DB cache for ${normalizedUrl}:`, error);
+                        EdgeTabsPlus.logToEruda(`Failed to clear DB cache for ${normalizedUrl}: ${error}`, 'error');
                     }
                 }
             } else {
@@ -343,13 +343,13 @@
                         const transaction = this.db.transaction(STORE_NAME, 'readwrite');
                         const store = transaction.objectStore(STORE_NAME);
                         await store.clear();
-                        EdgeTabsPlus.logger.addLog(`Cleared ${memoryCount} favicons from memory and DB`);
+                        EdgeTabsPlus.logToEruda(`Cleared ${memoryCount} favicons from memory and DB`, 'log');
                     } catch (error) {
-                        EdgeTabsPlus.logger.error('Failed to clear DB cache:', error);
-                        EdgeTabsPlus.logger.addLog(`Cleared ${memoryCount} favicons from memory only`);
+                        EdgeTabsPlus.logToEruda(`Failed to clear DB cache: ${error}`, 'error');
+                        EdgeTabsPlus.logToEruda(`Cleared ${memoryCount} favicons from memory only`, 'log');
                     }
                 } else {
-                    EdgeTabsPlus.logger.addLog(`Cleared ${memoryCount} favicons from memory (DB not available)`);
+                    EdgeTabsPlus.logToEruda(`Cleared ${memoryCount} favicons from memory (DB not available)`, 'log');
                 }
             }
         },
@@ -372,7 +372,7 @@
                         request.onerror = reject;
                     });
                 } catch (error) {
-                    EdgeTabsPlus.logger.error('Failed to get DB stats:', error);
+                    EdgeTabsPlus.logToEruda(`Failed to get DB stats: ${error}`, 'error');
                 }
             }
 
@@ -384,7 +384,7 @@
                 loadingUrls: Array.from(this.loadingPromises.keys())
             };
 
-            EdgeTabsPlus.logger.addLog(`Cache stats:`, stats);
+            EdgeTabsPlus.logToEruda(`Cache stats: ${JSON.stringify(stats)}`, 'log');
             return stats;
         }
     };

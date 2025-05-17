@@ -226,7 +226,7 @@
                     // Check if host element is in document
                     if (!document.body.contains(this.host)) {
                         document.body.appendChild(this.host);
-                        console.log('Re-added tab strip host to document');
+                        EdgeTabsPlus.logToEruda('Re-added tab strip host to document', 'log');
                     }
                     
                     // Force a layout recalculation
@@ -237,11 +237,7 @@
                 }
                 
                 // Log the visibility status
-                if (window.EdgeTabsPlus.logger) {
-                    window.EdgeTabsPlus.logger.addLog(`Tab strip visibility checked: ${shouldShow ? 'visible' : 'hidden'}`);
-                } else {
-                    console.log(`Tab strip visibility checked: ${shouldShow ? 'visible' : 'hidden'}`);
-                }
+                EdgeTabsPlus.logToEruda(`Tab strip visibility checked: ${shouldShow ? 'visible' : 'hidden'}`, 'log');
                 
                 // Update theme
                 const isDark = document.documentElement.classList.contains('dark-theme');

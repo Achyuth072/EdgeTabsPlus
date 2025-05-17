@@ -19,7 +19,6 @@
       "js": [
         "modules/namespace.js",
         "modules/config.js",
-        "modules/logger.js",
         "modules/styles.js",
         "modules/faviconHandler.js",
         "modules/uiComponents.js",

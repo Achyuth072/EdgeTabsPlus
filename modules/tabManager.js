@@ -35,7 +35,7 @@
                                     action: 'UPDATE_SCROLL_POSITION',
                                     position: tabsList.scrollLeft
                                 });
-                                EdgeTabsPlus.logger.debug(`[ScrollDebug] Sent scroll position update: ${tabsList.scrollLeft}`);
+                                EdgeTabsPlus.logToEruda(`[ScrollDebug] Sent scroll position update: ${tabsList.scrollLeft}`, 'debug');
                             }, 100); // 100ms debounce delay
                         });
                         return true;
@@ -75,22 +75,22 @@
         async renderTabs(tabs) {
             // LOG: Called renderTabs with tabs
             const logMsg6 = `TM: renderTabs - Called with tabs: ${JSON.stringify(tabs)}`;
-            window.postMessage({ extLog: logMsg6 }, '*');
+            EdgeTabsPlus.logToEruda(logMsg6, 'log');
             try {
                 // Deduplicate tabs by id
                 const uniqueTabs = Array.from(new Map(tabs.map(tab => [tab.id, tab])).values());
-                EdgeTabsPlus.logger.debug(`[renderTabs] Starting render of ${uniqueTabs.length} tabs. Pending: ${this.pendingRender}, Queue size: ${this.tabUpdateQueue.length}`);
+                EdgeTabsPlus.logToEruda(`[renderTabs] Starting render of ${uniqueTabs.length} tabs. Pending: ${this.pendingRender}, Queue size: ${this.tabUpdateQueue.length}`, 'debug');
                 const tabWidth = this.calculateTabWidth(uniqueTabs.length);
 
                 const tabStrip = document.getElementById('edgetabs-plus-host');
                 if (!tabStrip || !tabStrip.shadowRoot) {
-                    EdgeTabsPlus.logger.error('Tab strip or shadow root not found');
+                    EdgeTabsPlus.logToEruda('Tab strip or shadow root not found', 'error');
                     return;
                 }
                 
                 const tabsList = tabStrip.shadowRoot.getElementById('tabs-list');
                 if (!tabsList) {
-                    EdgeTabsPlus.logger.error('Tabs list not found in shadow DOM');
+                    EdgeTabsPlus.logToEruda('Tabs list not found in shadow DOM', 'error');
                     return;
                 }
 
@@ -150,19 +150,19 @@
                         tabElement.classList.remove('single-tab');
                         
                         // Debug log before changes
-                        EdgeTabsPlus.logger.debug(`[TabDebug] Before minimal mode - computed width: ${getComputedStyle(tabElement).width}`);
+                        EdgeTabsPlus.logToEruda(`[TabDebug] Before minimal mode - computed width: ${getComputedStyle(tabElement).width}`, 'debug');
                         
                         // Set minimal class first
                         tabElement.classList.add('minimal');
                         
                         // Debug log after minimal class
-                        EdgeTabsPlus.logger.debug(`[TabDebug] After minimal class - computed width: ${getComputedStyle(tabElement).width}`);
+                        EdgeTabsPlus.logToEruda(`[TabDebug] After minimal class - computed width: ${getComputedStyle(tabElement).width}`, 'debug');
                         
                         // Then set tab width
                         tabElement.style.setProperty('--tab-width', '90px');
                         
                         // Debug log after width property
-                        EdgeTabsPlus.logger.debug(`[TabDebug] After width property - computed width: ${getComputedStyle(tabElement).width}, favicon position: ${getComputedStyle(tabElement.querySelector('.tab-favicon')).left}`);
+                        EdgeTabsPlus.logToEruda(`[TabDebug] After width property - computed width: ${getComputedStyle(tabElement).width}, favicon position: ${getComputedStyle(tabElement.querySelector('.tab-favicon')).left}`, 'debug');
                     } else {
                         tabElement.classList.remove('single-tab', 'minimal');
                         tabElement.style.setProperty('--tab-width', `${tabWidth}px`);
@@ -176,7 +176,7 @@
                     let cleanTitle = 'New Tab';
                     
                     // Log title update for debugging
-                    EdgeTabsPlus.logger.debug(`[TitleUpdate ${tab.id}] Processing title "${tab.title}" for ${tab.active ? 'active' : 'background'} tab with status "${tab.status}"`);
+                    EdgeTabsPlus.logToEruda(`[TitleUpdate ${tab.id}] Processing title "${tab.title}" for ${tab.active ? 'active' : 'background'} tab with status "${tab.status}"`, 'debug');
                     
                     if (tab.title) {
                         if (tab.title === 'edge://newtab') {
@@ -184,7 +184,7 @@
                         } else if (tab.title === 'Loading...') {
                             // For any tab that still shows "Loading..." (even if not complete),
                             // try to extract title from URL as a fallback
-                            EdgeTabsPlus.logger.debug(`[TitleUpdate ${tab.id}] Tab title is still "Loading..." with status "${tab.status}" - Extracting from URL`);
+                            EdgeTabsPlus.logToEruda(`[TitleUpdate ${tab.id}] Tab title is still "Loading..." with status "${tab.status}" - Extracting from URL`, 'debug');
                             try {
                                 if (tab.url && tab.url.startsWith('http')) {
                                     const urlObj = new URL(tab.url);
@@ -256,11 +256,11 @@
                         // Don't override if we just cleaned a title with domain suffix
                         tab.title === cleanTitle) {
                         // Keep the already cleaned title
-                        EdgeTabsPlus.logger.debug(`[TitleUpdate ${tab.id}] Using original title as it's not a URL and hasn't been cleaned`);
+                        EdgeTabsPlus.logToEruda(`[TitleUpdate ${tab.id}] Using original title as it's not a URL and hasn't been cleaned`, 'debug');
                     }
                     
                     // Compare original and cleaned title to debug title cleaning
-                    window.postMessage({ extLog: `[TitleUpdate ${tab.id}] Title cleaning: original="${tab.title}", cleaned="${cleanTitle}"` }, '*');
+                    EdgeTabsPlus.logToEruda(`[TitleUpdate ${tab.id}] Title cleaning: original="${tab.title}", cleaned="${cleanTitle}"`, 'log');
                     
                     if (titleSpan.textContent !== cleanTitle) {
                         titleSpan.textContent = cleanTitle;
@@ -271,15 +271,15 @@
                     const cachedSrc = await EdgeTabsPlus.faviconHandler.getCachedFavicon(tab);
                     
                     if (cachedSrc) {
-                        EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Cache hit for ${tab.url}`);
+                        EdgeTabsPlus.logToEruda(`[renderTabs ${tab.id}] Cache hit for ${tab.url}`, 'debug');
                         this.updateFavicon(favicon, cachedSrc, tab);
                     } else if (tab.url) {
-                        EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Cache miss for ${tab.url}`);
+                        EdgeTabsPlus.logToEruda(`[renderTabs ${tab.id}] Cache miss for ${tab.url}`, 'debug');
                         try {
                             const loadedSrc = await EdgeTabsPlus.faviconHandler.loadFavicon(tab);
                             this.updateFavicon(favicon, loadedSrc, tab);
                         } catch (error) {
-                            EdgeTabsPlus.logger.error(`[tabManager ${tab.id}] Error loading favicon:`, error);
+                            EdgeTabsPlus.logToEruda(`[tabManager ${tab.id}] Error loading favicon: ${error}`, 'error');
                             this.updateFavicon(favicon, EdgeTabsPlus.faviconHandler.getDefaultIcon(), tab);
                         }
                     } else {
@@ -319,10 +319,10 @@
 
                 // Update UI state and log completion
                 this.updateMinimalTabs();
-                EdgeTabsPlus.logger.debug(`[renderTabs] Completed render of ${uniqueTabs.length} tabs successfully`);
+                EdgeTabsPlus.logToEruda(`[renderTabs] Completed render of ${uniqueTabs.length} tabs successfully`, 'debug');
                 this.updateScrollIndicators();
             } catch (error) {
-                EdgeTabsPlus.logger.error('Failed to render tabs:', error);
+                EdgeTabsPlus.logToEruda(`Failed to render tabs: ${error}`, 'error');
             }
         },
 
@@ -333,7 +333,7 @@
                 const bgImageValue = `url("${src.replace(/"/g, '\\"')}")`;
                 if (faviconElement.style.backgroundImage !== bgImageValue) {
                     faviconElement.style.backgroundImage = bgImageValue;
-                    EdgeTabsPlus.logger.debug(`[renderTabs ${tab.id}] Updated favicon: ${bgImageValue}`);
+                    EdgeTabsPlus.logToEruda(`[renderTabs ${tab.id}] Updated favicon: ${bgImageValue}`, 'debug');
                 }
             });
         },
@@ -376,15 +376,15 @@
                 if (message.action === 'tabsUpdated' && message.tabs) {
                     // LOG: Received tabsUpdated message
                     const logMsg1 = `TM: Message Listener - Received "tabsUpdated". Tab count: ${message.tabs.length}, Full data: ${JSON.stringify(message.tabs)}`;
-                    window.postMessage({ extLog: logMsg1 }, '*');
+                    EdgeTabsPlus.logToEruda(logMsg1, 'log');
                     // Queue this update with scroll position
-                    EdgeTabsPlus.logger.debug(`Queueing tab update with ${message.tabs.length} tabs and scroll position ${message.sharedScrollPosition}`);
+                    EdgeTabsPlus.logToEruda(`Queueing tab update with ${message.tabs.length} tabs and scroll position ${message.sharedScrollPosition}`, 'debug');
                     this.queueTabUpdate(message.tabs, message.sharedScrollPosition);
                 }
 
                 // Listen for logs forwarded from background.js and relay to Eruda
                 if (message.action === 'forwardLogToEruda' && message.logEntry) {
-                    window.postMessage({ extLog: message.logEntry }, '*');
+                    EdgeTabsPlus.logToEruda(message.logEntry, 'log');
                     // Optionally, could send a response here if needed
                 }
             });
@@ -460,20 +460,20 @@
 
             // LOG: Compare new and old tab states
             const logMsg2 = `TM: processNextUpdate - Comparing states. New state tab count: ${uniqueTabs.length}, Old state tab count: ${JSON.parse(this.lastTabsState || '[]').length}`;
-            window.postMessage({ extLog: logMsg2 }, '*');
+            EdgeTabsPlus.logToEruda(logMsg2, 'log');
             const logMsg3 = `TM: processNextUpdate - New state: ${newState}`;
-            window.postMessage({ extLog: logMsg3 }, '*');
+            EdgeTabsPlus.logToEruda(logMsg3, 'log');
             const logMsg4 = `TM: processNextUpdate - Last state: ${this.lastTabsState}`;
-            window.postMessage({ extLog: logMsg4 }, '*');
+            EdgeTabsPlus.logToEruda(logMsg4, 'log');
             const logMsg5 = `TM: processNextUpdate - States equal: ${newState === this.lastTabsState}`;
-            window.postMessage({ extLog: logMsg5 }, '*');
+            EdgeTabsPlus.logToEruda(logMsg5, 'log');
             
             if (hasCompletedTabsToUpdate) {
-                window.postMessage({ extLog: `TM: processNextUpdate - Force update for background tabs with real titles (status: ${update.tabs.filter(t => !t.active && t.title && t.title !== 'Loading...').map(t => t.status).join(',')})` }, '*');
+                EdgeTabsPlus.logToEruda(`TM: processNextUpdate - Force update for background tabs with real titles (status: ${update.tabs.filter(t => !t.active && t.title && t.title !== 'Loading...').map(t => t.status).join(',')})`, 'log');
             }
 
             if (newState !== this.lastTabsState || hasCompletedTabsToUpdate) {
-                EdgeTabsPlus.logger.debug(`Processing ${uniqueTabs.length} deduplicated tabs`);
+                EdgeTabsPlus.logToEruda(`Processing ${uniqueTabs.length} deduplicated tabs`, 'debug');
                 this.lastTabsState = newState;
                 
                 // Use requestAnimationFrame to ensure we're in sync with browser's render cycle
@@ -484,7 +484,7 @@
                         const tabsList = tabStrip?.shadowRoot?.getElementById('tabs-list');
 
                         if (tabsList) {
-                            EdgeTabsPlus.logger.debug(`[ScrollDebug] Before restoring - Current scrollLeft: ${tabsList.scrollLeft}`);
+                            EdgeTabsPlus.logToEruda(`[ScrollDebug] Before restoring - Current scrollLeft: ${tabsList.scrollLeft}`, 'debug');
                             
                             requestAnimationFrame(() => {
                                 if (tabsList) { // Verify element still exists
@@ -492,9 +492,9 @@
                                     // Ensure the position to restore is not greater than the maximum possible scroll
                                     const validScrollPosition = Math.max(0, Math.min(update.scrollPosition, maxScrollLeft));
 
-                                    EdgeTabsPlus.logger.debug(`[ScrollDebug] Attempting restore - Shared: ${update.scrollPosition}, Max: ${maxScrollLeft}, Valid: ${validScrollPosition}`);
+                                    EdgeTabsPlus.logToEruda(`[ScrollDebug] Attempting restore - Shared: ${update.scrollPosition}, Max: ${maxScrollLeft}, Valid: ${validScrollPosition}`, 'debug');
                                     tabsList.scrollLeft = validScrollPosition;
-                                    EdgeTabsPlus.logger.debug(`[ScrollDebug] After restoring (in rAF) - New scrollLeft: ${tabsList.scrollLeft}`);
+                                    EdgeTabsPlus.logToEruda(`[ScrollDebug] After restoring (in rAF) - New scrollLeft: ${tabsList.scrollLeft}`, 'debug');
                                 }
                                 
                                 this.pendingRender = false;
@@ -518,7 +518,7 @@
                     });
                 });
             } else {
-                EdgeTabsPlus.logger.debug('Ignoring duplicate tabs update');
+                EdgeTabsPlus.logToEruda('Ignoring duplicate tabs update', 'debug');
                 this.pendingRender = false;
                 // Check for more updates
                 if (this.tabUpdateQueue.length > 0) {

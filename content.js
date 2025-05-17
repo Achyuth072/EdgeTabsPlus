@@ -1,10 +1,11 @@
+EdgeTabsPlus.logToEruda("!!! CONTENT_SCRIPT_ROOT_TEST_LOG --- ERUDA_CAPTURE_CHECK !!!", 'log');
 // Initialize EdgeTabs+ extension
 (function() {
     // Ensure initialization happens after DOM is loaded
     async function initialize() {
         // Check if namespace exists
         if (!window.EdgeTabsPlus) {
-            console.error('EdgeTabsPlus namespace not found! Modules may not have loaded correctly.');
+            EdgeTabsPlus.logToEruda('EdgeTabsPlus namespace not found! Modules may not have loaded correctly.', 'error');
             return;
         }
 
@@ -13,7 +14,7 @@
             EdgeTabsPlus.config.init();
 
             // Log initialization started
-            console.log('Starting EdgeTabs+ initialization...');
+            EdgeTabsPlus.logToEruda('Starting EdgeTabs+ initialization...', 'log');
             
             // Initialize styles first
             EdgeTabsPlus.styles.init();
@@ -21,19 +22,18 @@
             // Initialize UI components and wait for styles to be ready
             await EdgeTabsPlus.uiComponents.init();
             
-            // Initialize logger after UI is ready
-            EdgeTabsPlus.logger.init();
+            // Logger initialization removed as part of Eruda transition
 
             // After logger is ready, use it for subsequent logs
-            EdgeTabsPlus.logger.addLog('Core modules initialized');
-            EdgeTabsPlus.logger.addLog(`Using scroll threshold: ${EdgeTabsPlus.config.scroll.threshold}px`);
+            EdgeTabsPlus.logToEruda('Core modules initialized', 'log');
+            EdgeTabsPlus.logToEruda(`Using scroll threshold: ${EdgeTabsPlus.config.scroll.threshold}px`, 'log');
 
             // Initialize favicon handler with retry logic
             try {
                 await EdgeTabsPlus.faviconHandler.init();
-                EdgeTabsPlus.logger.addLog('Favicon handler initialized successfully');
+                EdgeTabsPlus.logToEruda('Favicon handler initialized successfully', 'log');
             } catch (error) {
-                EdgeTabsPlus.logger.error('Favicon handler initialization failed, using fallback:', error);
+                EdgeTabsPlus.logToEruda(`Favicon handler initialization failed, using fallback: ${error}`, 'error');
                 // Reset to basic memory cache if IndexedDB fails
                 EdgeTabsPlus.faviconHandler.db = null;
                 EdgeTabsPlus.faviconHandler.cache.clear();
@@ -63,7 +63,7 @@
                 if (host && host.shadowRoot) {
                     host.setAttribute('theme', theme);
                     window.EdgeTabsPlus.currentTheme = theme;
-                    EdgeTabsPlus.logger.addLog(`Theme updated to ${theme}`);
+                    EdgeTabsPlus.logToEruda(`Theme updated to ${theme}`, 'log');
                 }
             };
 
@@ -100,15 +100,15 @@
                                 // Force style recalculation
                                 void strip.offsetHeight;
                                 
-                                EdgeTabsPlus.logger.addLog(`Theme set to ${theme}, visibility: ${showStrip}, auto-hide: ${autoHide}`);
+                                EdgeTabsPlus.logToEruda(`Theme set to ${theme}, visibility: ${showStrip}, auto-hide: ${autoHide}`, 'log');
                             } else {
-                                EdgeTabsPlus.logger.error('Strip element not found in shadow DOM');
+                                EdgeTabsPlus.logToEruda('Strip element not found in shadow DOM', 'error');
                             }
                         } else {
-                            EdgeTabsPlus.logger.error('Host element or shadow root not found');
+                            EdgeTabsPlus.logToEruda('Host element or shadow root not found', 'error');
                         }
                     } catch (error) {
-                        EdgeTabsPlus.logger.error('Failed to initialize states:', error);
+                        EdgeTabsPlus.logToEruda(`Failed to initialize states: ${error}`, 'error');
                     }
                     resolve();
                 });
@@ -120,33 +120,40 @@
             }
 
             // Log successful initialization with config details
-            EdgeTabsPlus.logger.addLog(`EdgeTabs+ v${EdgeTabsPlus.version} initialized successfully`);
-            EdgeTabsPlus.logger.addLog('Configuration:', EdgeTabsPlus.config);
+            EdgeTabsPlus.logToEruda(`EdgeTabs+ v${EdgeTabsPlus.version} initialized successfully`, 'log');
+            EdgeTabsPlus.logToEruda(`Configuration: ${JSON.stringify(EdgeTabsPlus.config)}`, 'log');
             
             if (EdgeTabsPlus.settings.retainScrollPosition) {
-                EdgeTabsPlus.logger.addLog('Scroll position retention is enabled');
+                EdgeTabsPlus.logToEruda('Scroll position retention is enabled', 'log');
             }
         } catch (error) {
-            console.error('EdgeTabs+ initialization failed:', error);
-            if (EdgeTabsPlus.logger) {
-                EdgeTabsPlus.logger.error('Initialization failed', error);
-            }
+            EdgeTabsPlus.logToEruda(`EdgeTabs+ initialization failed: ${error}`, 'error');
+            // Additional error logging already handled on line 129
         }
     }
 
     // Listen for messages from popup and background
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!window.EdgeTabsPlus) {
-            console.error('EdgeTabsPlus not initialized for message:', message);
+            EdgeTabsPlus.logToEruda(`EdgeTabsPlus not initialized for message: ${JSON.stringify(message)}`, 'error');
             return;
         }
+// Logger references removed as part of Eruda transition
 
-        const { logger } = window.EdgeTabsPlus;
 
         switch (message.action) {
+            case 'forwardLogToEruda':
+                if (message.logEntry) {
+                    EdgeTabsPlus.logToEruda("[BG_LOG] " + message.logEntry, 'log');
+                    if (sendResponse) {
+                        sendResponse({ status: "log received by content script" });
+                    }
+                }
+                return true; // Keep message channel open
+                
             case 'themeChanged':
                 try {
-                    logger.addLog('Received theme change message:', message);
+                    EdgeTabsPlus.logToEruda(`Received theme change message: ${JSON.stringify(message)}`, 'log');
                     const host = document.getElementById('edgetabs-plus-host');
                     if (!host || !host.shadowRoot) {
                         throw new Error('Tab strip host element or shadow root not found');
@@ -180,7 +187,7 @@
                         sendResponse({ success: true });
                     }
                 } catch (error) {
-                    logger.error('Failed to update theme:', error);
+                    EdgeTabsPlus.logToEruda(`Failed to update theme: ${error}`, 'error');
                     if (sendResponse) {
                         sendResponse({ success: false, error: error.message });
                     }
@@ -214,7 +221,7 @@
                                     }, 300);
                                 }
                                 
-                                logger.addLog(`Tab strip visibility set to: ${message.value}`);
+                                EdgeTabsPlus.logToEruda(`Tab strip visibility set to: ${message.value}`, 'log');
                             }
                             break;
                             
@@ -224,11 +231,11 @@
                                 strip.classList.toggle('auto-hide-enabled', message.value);
                             }
                             EdgeTabsPlus.scrollHandler.setAutoHide(message.value);
-                            logger.addLog(`Auto-hide set to: ${message.value}`);
+                            EdgeTabsPlus.logToEruda(`Auto-hide set to: ${message.value}`, 'log');
                             break;
                             
                         default:
-                            logger.addLog(`Unknown toggle key: ${message.key}`);
+                            EdgeTabsPlus.logToEruda(`Unknown toggle key: ${message.key}`, 'log');
                     }
                     
                     // Send confirmation back
@@ -236,7 +243,7 @@
                         sendResponse({ success: true });
                     }
                 } catch (error) {
-                    logger.error('Failed to handle toggle update:', error);
+                    EdgeTabsPlus.logToEruda(`Failed to handle toggle update: ${error}`, 'error');
                     if (sendResponse) {
                         sendResponse({ success: false, error: error.message });
                     }
