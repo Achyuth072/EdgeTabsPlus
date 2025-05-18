@@ -1,3 +1,6 @@
+// shadowStylesManager is loaded via content_scripts in manifest.json
+// No import needed as it's exposed as window.shadowStylesManager
+
 EdgeTabsPlus.logToEruda("!!! CONTENT_SCRIPT_ROOT_TEST_LOG --- ERUDA_CAPTURE_CHECK !!!", 'log');
 // Initialize EdgeTabs+ extension
 (function() {
@@ -16,8 +19,8 @@ EdgeTabsPlus.logToEruda("!!! CONTENT_SCRIPT_ROOT_TEST_LOG --- ERUDA_CAPTURE_CHEC
             // Log initialization started
             EdgeTabsPlus.logToEruda('Starting EdgeTabs+ initialization...', 'log');
             
-            // Initialize styles first
-            EdgeTabsPlus.styles.init();
+            // No need to initialize styles separately anymore as we're using shadowStylesManager
+            // which doesn't require initialization
             
             // Initialize UI components and wait for styles to be ready
             await EdgeTabsPlus.uiComponents.init();
@@ -101,6 +104,15 @@ EdgeTabsPlus.logToEruda("!!! CONTENT_SCRIPT_ROOT_TEST_LOG --- ERUDA_CAPTURE_CHEC
                                 void strip.offsetHeight;
                                 
                                 EdgeTabsPlus.logToEruda(`Theme set to ${theme}, visibility: ${showStrip}, auto-hide: ${autoHide}`, 'log');
+                                
+                                // Ensure toggle button state is consistent with strip visibility
+                                if (EdgeTabsPlus.toggleButton) {
+                                    // If strip is not shown, make sure toggle is in collapsed state
+                                    if (!showStrip && !EdgeTabsPlus.toggleButton.isCollapsed) {
+                                        EdgeTabsPlus.toggleButton.collapseTabStrip(false);
+                                        EdgeTabsPlus.logToEruda('Toggle button state corrected to match strip visibility', 'log');
+                                    }
+                                }
                             } else {
                                 EdgeTabsPlus.logToEruda('Strip element not found in shadow DOM', 'error');
                             }

@@ -1,0 +1,39 @@
+:root {
+    --strip-bg: #f0f2f4;
+    --strip-border: rgba(0, 0, 0, 0.1);
+    --strip-shadow: rgba(0, 0, 0, 0.05);
+    --tab-bg: linear-gradient(to bottom, #ffffff, #f8f9fa);
+    --tab-border: rgba(0, 0, 0, 0.1);
+    --tab-shadow: rgba(0, 0, 0, 0.05);
+    --tab-active-bg: #ffffff;
+    --tab-active-border: rgba(0, 0, 0, 0.2);
+    --tab-active-shadow: rgba(0, 0, 0, 0.1);
+    --tab-active-indicator: #0078D4;
+    --tab-text: #000000;
+    --tab-hover-bg: rgba(0, 0, 0, 0.05);
+    --add-btn-bg: #f8f9fa;
+    --add-btn-border: #ddd;
+    --add-btn-color: #666;
+    --add-btn-hover-bg: #fff;
+    --add-btn-hover-color: #000;
+}
+
+:root.dark-theme {
+    --strip-bg: #202124;
+    --strip-border: rgba(255, 255, 255, 0.1);
+    --strip-shadow: rgba(0, 0, 0, 0.2);
+    --tab-bg: linear-gradient(to bottom, #292a2d, #202124);
+    --tab-border: rgba(255, 255, 255, 0.1);
+    --tab-shadow: rgba(0, 0, 0, 0.2);
+    --tab-active-bg: #3c4043;
+    --tab-active-border: rgba(255, 255, 255, 0.2);
+    --tab-active-shadow: rgba(0, 0, 0, 0.3);
+    --tab-active-indicator: #8ab4f8;
+    --tab-text: #e8eaed;
+    --tab-hover-bg: rgba(255, 255, 255, 0.05);
+    --add-btn-bg: #292a2d;
+    --add-btn-border: #5f6368;
+    --add-btn-color: #e8eaed;
+    --add-btn-hover-bg: #3c4043;
+    --add-btn-hover-color: #ffffff;
+}

@@ -16,9 +16,14 @@
             // Create and inject styles into shadow DOM - wait for completion
             await this.injectStyles();
             
+            // Create UI components
             this.tabsList = this.createTabsList();
             this.addButtonContainer = this.createAddButtonContainer();
             this.addButton = this.createAddButton();
+            
+            // Make sure list has the correct ID and class
+            this.tabsList.id = 'tabs-list';
+            this.tabsList.className = 'tabs-list';
             
             // Wait for next frame to ensure styles are applied before setup
             await new Promise(resolve => requestAnimationFrame(resolve));
@@ -26,7 +31,11 @@
             
             // Initialize toggle button functionality (if available)
             if (EdgeTabsPlus.toggleButton) {
+                // Initialize the toggle button
                 EdgeTabsPlus.toggleButton.init();
+                EdgeTabsPlus.logToEruda('Toggle button initialized from uiComponents', 'log');
+            } else {
+                EdgeTabsPlus.logToEruda('Toggle button module not available', 'error');
             }
             
             // Add additional check to ensure strip visibility
@@ -46,8 +55,17 @@
                     styleElement.id = 'edgetabs-styles';
                 }
 
-                // Get complete styles including logger styles
-                styleElement.textContent = EdgeTabsPlus.styles.getStyles();
+                // Get complete styles using the shadowStylesManager from EdgeTabsPlus namespace
+                if (!EdgeTabsPlus.shadowStylesManager) {
+                    EdgeTabsPlus.logToEruda('shadowStylesManager not found in EdgeTabsPlus namespace!', 'error');
+                    resolve();
+                    return;
+                }
+                
+                // Set style content
+                styleElement.textContent = EdgeTabsPlus.shadowStylesManager.getCombinedStyles(EdgeTabsPlus.config);
+                
+                EdgeTabsPlus.logToEruda('Shadow DOM styles injected successfully', 'log');
                 
                 // Insert immediately if not already in shadow DOM
                 if (!this.shadow.contains(styleElement)) {
@@ -130,8 +148,16 @@
             const strip = document.createElement('div');
             strip.id = 'edgetabs-plus-strip';
             
-            // Let CSS handle all the styling
+            // Apply critical styles directly
             strip.style.setProperty('--strip-bottom-offset', EdgeTabsPlus.config.tabStrip.bottomOffset);
+            strip.style.display = 'flex';
+            strip.style.position = 'fixed';
+            strip.style.bottom = EdgeTabsPlus.config.tabStrip.bottomOffset || '0';
+            strip.style.left = '0';
+            strip.style.width = '100%';
+            strip.style.zIndex = '9999999';
+            strip.style.alignItems = 'center';
+            strip.style.justifyContent = 'flex-start';
             
             // Add strip to shadow root
             shadow.appendChild(strip);
@@ -142,14 +168,27 @@
         createTabsList() {
             const list = document.createElement('ul');
             list.id = 'tabs-list';
+            list.className = 'tabs-list'; // Add class name for CSS targeting
+            
+            // Apply critical styles directly
             list.style.pointerEvents = 'auto';
-            list.style.touchAction = 'auto';
+            list.style.touchAction = 'pan-x';
             list.style.listStyle = 'none';
             list.style.display = 'flex';
             list.style.margin = '0';
-            list.style.padding = '0';
+            list.style.padding = '0 8px';
             list.style.overflowX = 'auto';
+            list.style.overflowY = 'hidden';
             list.style.width = '100%';
+            list.style.flex = '1';
+            list.style.gap = '8px';
+            list.style.alignItems = 'center';
+            list.style.justifyContent = 'flex-start';
+            
+            // Hide scrollbar
+            list.style.scrollbarWidth = 'none';
+            list.style.msOverflowStyle = 'none';
+            
             return list;
         },
 

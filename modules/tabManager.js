@@ -123,6 +123,12 @@
                     </li>
                 `.trim();
 
+                EdgeTabsPlus.logToEruda('Tab template created with proper structure', 'debug');
+
+                EdgeTabsPlus.logToEruda('Tab template created with proper structure', 'debug');
+
+                EdgeTabsPlus.logToEruda('Tab template created with proper structure', 'debug');
+
                 // Track tabs to remove
                 const tabsToRemove = new Set(currentTabsMap.keys());
 
@@ -158,14 +164,18 @@
                         // Debug log after minimal class
                         EdgeTabsPlus.logToEruda(`[TabDebug] After minimal class - computed width: ${getComputedStyle(tabElement).width}`, 'debug');
                         
-                        // Then set tab width
-                        tabElement.style.setProperty('--tab-width', '90px');
+                        // Then set tab width with important flag to override any CSS
+                        tabElement.style.setProperty('--tab-width', '90px', 'important');
+                        tabElement.style.width = '90px';
+                        tabElement.style.flex = '0 0 90px';
                         
                         // Debug log after width property
                         EdgeTabsPlus.logToEruda(`[TabDebug] After width property - computed width: ${getComputedStyle(tabElement).width}, favicon position: ${getComputedStyle(tabElement.querySelector('.tab-favicon')).left}`, 'debug');
                     } else {
                         tabElement.classList.remove('single-tab', 'minimal');
-                        tabElement.style.setProperty('--tab-width', `${tabWidth}px`);
+                        tabElement.style.setProperty('--tab-width', `${tabWidth}px`, 'important');
+                        tabElement.style.width = `${tabWidth}px`;
+                        tabElement.style.flex = `0 0 ${tabWidth}px`;
                     }
 
                     // Update active state
@@ -330,11 +340,19 @@
             if (!faviconElement || !src) return;
             
             requestAnimationFrame(() => {
+                // Apply all essential favicon styles directly
                 const bgImageValue = `url("${src.replace(/"/g, '\\"')}")`;
-                if (faviconElement.style.backgroundImage !== bgImageValue) {
-                    faviconElement.style.backgroundImage = bgImageValue;
-                    EdgeTabsPlus.logToEruda(`[renderTabs ${tab.id}] Updated favicon: ${bgImageValue}`, 'debug');
-                }
+                faviconElement.style.backgroundImage = bgImageValue;
+                faviconElement.style.backgroundSize = 'contain';
+                faviconElement.style.backgroundRepeat = 'no-repeat';
+                faviconElement.style.backgroundPosition = 'center';
+                faviconElement.style.width = '20px';
+                faviconElement.style.height = '20px';
+                faviconElement.style.minWidth = '20px';
+                faviconElement.style.flexShrink = '0';
+                faviconElement.style.display = 'inline-block';
+                
+                EdgeTabsPlus.logToEruda(`[renderTabs ${tab.id}] Updated favicon: ${bgImageValue}`, 'debug');
             });
         },
 

@@ -6,7 +6,7 @@ window.EdgeTabsPlus = {
 
     // Modules
     // logger: null, // Removed as part of Eruda transition
-    styles: null,
+    // styles: null, // Removed as part of styles refactoring
     faviconHandler: null,
     uiComponents: null,
     tabManager: null,
@@ -52,10 +52,10 @@ window.EdgeTabsPlus = {
 
     // Utility function to check if namespace is properly initialized
     isInitialized() {
-        return !!(this.config && this.styles &&
+        return !!(this.config &&
                  this.faviconHandler && this.uiComponents &&
                  this.tabManager && this.scrollHandler &&
                  this.touchHandler);
-        // logger removed from initialization check as part of Eruda transition
+        // logger and styles removed from initialization check as part of refactoring
     }
 };
