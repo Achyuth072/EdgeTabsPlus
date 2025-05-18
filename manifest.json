@@ -19,7 +19,7 @@
       "js": [
         "modules/namespace.js",
         "modules/config.js",
-        "modules/styles.js",
+        "modules/shadowStylesManager.js",
         "modules/faviconHandler.js",
         "modules/uiComponents.js",
         "modules/tabManager.js",
@@ -27,6 +27,10 @@
         "modules/touchHandler.js",
         "modules/toggleButton.js",
         "content.js"
+      ],
+      "css": [
+        "styles/global/theme-variables.css",
+        "styles/global/theme-protection.css"
       ],
       "run_at": "document_start",
       "all_frames": false
