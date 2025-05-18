@@ -14,7 +14,7 @@ window.EdgeTabsPlus = {
     touchHandler: null,
 
     // Version information
-    version: '0.5.5',
+    version: '0.7.5',
 
     /**
      * Logs a message to Eruda console via window.postMessage with extLog property

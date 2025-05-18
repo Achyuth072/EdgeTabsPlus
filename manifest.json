@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "EdgeTabs+",
-  "version": "0.7.0",
+  "version": "0.7.5",
   "description": "Adds a tab strip in Edge for Android.",
   "icons": {
     "128": "icons/icon128.png",

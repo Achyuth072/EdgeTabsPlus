@@ -1,0 +1,14 @@
+/* Forcefully prevent browser dark mode from affecting our theming */
+@media (prefers-color-scheme: dark) {
+    #edgetabs-plus-strip, #edgetabs-plus-strip * {
+        color-scheme: normal !important;
+    }
+}
+
+/* Essential override to prevent browser from imposing its theme */
+#edgetabs-plus-strip, .tab-item {
+    forced-colors: none !important;
+    forced-color-adjust: none !important;
+    -webkit-forced-color-adjust: none !important;
+    -ms-high-contrast-adjust: none !important;
+}
