@@ -6,6 +6,7 @@
         button: null,
         isCollapsed: false,
         _buttonOriginalPosition: null,
+        _boundResizeHandler: null,
         
         // Constants
         TOGGLE_BUTTON_COLOR: '#104e92',
@@ -38,6 +39,10 @@
             // Create toggle button immediately
             this.createToggleButton();
             
+            // Add window resize listener to update button position
+            this._boundResizeHandler = this._handleResize.bind(this);
+            window.addEventListener('resize', this._boundResizeHandler);
+            
             // Prevent flash on load
             const elements = this._getDOMElements();
             if (elements) {
@@ -47,6 +52,11 @@
             // Check stored state
             chrome.storage.sync.get(['tabStripCollapsed'], (result) => {
                 const shouldBeCollapsed = result.tabStripCollapsed === true;
+                
+                // Store initial button position before any state changes
+                if (this.button) {
+                    this._storeButtonPosition();
+                }
                 
                 // Apply stored state
                 if (shouldBeCollapsed) {
@@ -100,42 +110,62 @@
             }
         },
         
+        // Helper to set button styles efficiently
+        _setButtonBaseStyles(styles) {
+            if (!this.button) return;
+            Object.assign(this.button.style, styles);
+        },
+        
         // Helper for setting button expanded styles
         _applyExpandedButtonStyles() {
             if (!this.button) return;
             
-            this.button.style.position = 'relative';
-            this.button.style.zIndex = '2';
-            this.button.style.marginRight = '8px';
-            this.button.style.color = this.TOGGLE_BUTTON_COLOR;
-            this.button.style.backgroundColor = this.TOGGLE_BUTTON_BG_COLOR;
-            this.button.style.fontSize = '1.5em'; // Make arrows bigger
-            this.button.style.display = 'flex';
-            this.button.style.alignItems = 'center';
-            this.button.style.justifyContent = 'center';
-            this.button.style.top = '';
-            this.button.style.left = '';
-            this.button.style.right = '';
-            this.button.style.bottom = '';
+            this._setButtonBaseStyles({
+                position: 'relative',
+                zIndex: '2',
+                marginRight: '8px',
+                color: this.TOGGLE_BUTTON_COLOR,
+                backgroundColor: this.TOGGLE_BUTTON_BG_COLOR,
+                fontSize: '1.3em', // Make arrows bigger
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                top: '',
+                left: '',
+                right: '',
+                bottom: '',
+                width: '24px', // Explicit dimensions
+                height: '24px'
+            });
         },
         
         // Helper for setting button collapsed styles
         _applyCollapsedButtonStyles() {
             if (!this.button) return;
             
-            this.button.style.position = 'absolute';
-            this.button.style.zIndex = '999999';
-            this.button.style.display = 'flex';
-            this.button.style.alignItems = 'center';
-            this.button.style.justifyContent = 'center';
-            this.button.style.pointerEvents = 'auto';
-            this.button.style.left = '10px';  // Position on left side instead of right
-            this.button.style.bottom = '10px';
-            this.button.style.top = 'auto';
-            this.button.style.right = 'auto'; // Clear right position
-            this.button.style.color = this.TOGGLE_BUTTON_COLOR;
-            this.button.style.backgroundColor = this.TOGGLE_BUTTON_BG_COLOR;
-            this.button.style.fontSize = '1.5em'; // Make arrows bigger
+            this._setButtonBaseStyles({
+                position: 'absolute',
+                zIndex: '999999',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                pointerEvents: 'auto',
+                // In the container, position relative to container
+                left: '0',
+                top: '0',
+                right: 'auto',
+                bottom: 'auto',
+                width: '24px',
+                height: '24px',
+                color: this.TOGGLE_BUTTON_COLOR,
+                backgroundColor: this.TOGGLE_BUTTON_BG_COLOR,
+                fontSize: '1.3em', // Make arrows bigger
+                // Enhanced visibility styles
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                border: 'none',
+                opacity: '1',
+                visibility: 'visible'
+            });
         },
 
         updateButtonState() {
@@ -169,6 +199,27 @@
             // Update button state
             this.updateButtonState();
         },
+        
+        // Helper to store button position consistently
+        _storeButtonPosition() {
+            if (!this.button) return;
+            
+            const rect = this.button.getBoundingClientRect();
+            this._buttonOriginalPosition = {
+                left: rect.left,
+                top: rect.top,
+                width: rect.width,
+                height: rect.height
+            };
+        },
+        
+        // Helper to set container dimensions consistently
+        _setContainerDimensions(container) {
+            if (!container) return;
+            
+            container.style.width = '24px';
+            container.style.height = '24px';
+        },
          
         collapseTabStrip(animate = true) {
             const elements = this._getDOMElements();
@@ -183,19 +234,13 @@
             // Add transition if animating
             if (animate) strip.classList.add('transitioning');
             
-            // Store button position before changes if needed
-            if (!this._buttonOriginalPosition && this.button) {
-                const rect = this.button.getBoundingClientRect();
-                this._buttonOriginalPosition = {
-                    left: rect.left,
-                    top: rect.top
-                };
+            // Store button position before changes
+            if (this.button) {
+                this._storeButtonPosition();
             }
             
             // Update strip state
             strip.classList.add('collapsed');
-            strip.style.visibility = 'hidden';
-            
             // Create or update style for hiding elements
             let hideStyle = strip.querySelector('#hide-elements-style');
             if (!hideStyle) {
@@ -224,11 +269,37 @@
             this.button.classList.add('strip-collapsed-state');
             this._applyCollapsedButtonStyles();
             
-            // Move button to toolbar to integrate with scroll behavior
-            const toolbar = document.querySelector('.toolbar-bottom');
-            if (toolbar && !toolbar.contains(this.button)) {
-                toolbar.appendChild(this.button);
+            // Create a fallback container for the button
+            let buttonContainer = document.getElementById('edgetabs-toggle-container');
+            if (!buttonContainer) {
+                buttonContainer = document.createElement('div');
+                buttonContainer.id = 'edgetabs-toggle-container';
+                buttonContainer.style.position = 'fixed';
+                buttonContainer.style.zIndex = '9999999';
+                
+                // Use the stored position if available, otherwise use fallback values
+                if (this._buttonOriginalPosition) {
+                    buttonContainer.style.top = `${this._buttonOriginalPosition.top}px`;
+                    buttonContainer.style.left = `${this._buttonOriginalPosition.left}px`;
+                    this._setContainerDimensions(buttonContainer);
+                } else {
+                    buttonContainer.style.bottom = '10px';
+                    buttonContainer.style.left = '10px';
+                    this._setContainerDimensions(buttonContainer);
+                }
+                document.body.appendChild(buttonContainer);
+            } else {
+                // Reset container dimensions when re-collapsing
+                this._setContainerDimensions(buttonContainer);
             }
+            
+            // Add button to container if it's not already there
+            if (!buttonContainer.contains(this.button)) {
+                buttonContainer.appendChild(this.button);
+            }
+            
+            // Set strip to hidden AFTER moving the button out
+            strip.style.visibility = 'hidden';
             
             // Remove transition class after animation
             if (animate) {
@@ -270,24 +341,29 @@
             // Update button
             this.button.classList.remove('strip-collapsed-state');
             
-            // Return button to strip
-            const toolbar = document.querySelector('.toolbar-bottom');
-            if (toolbar && toolbar.contains(this.button)) {
+            // Check for our fallback container
+            const buttonContainer = document.getElementById('edgetabs-toggle-container');
+            if (buttonContainer && buttonContainer.contains(this.button)) {
                 strip.insertBefore(this.button, strip.firstChild);
-            } else {
-                const buttonContainer = document.getElementById('edgetabs-toggle-container');
-                if (buttonContainer && buttonContainer.contains(this.button)) {
-                    strip.insertBefore(this.button, strip.firstChild);
-                    
-                    // Remove the container if it's empty
-                    if (buttonContainer.childElementCount <= 1) {
-                        buttonContainer.remove();
+                
+                // Update stored button position for next time
+                setTimeout(() => {
+                    if (this.button) {
+                        this._storeButtonPosition();
                     }
+                }, 50); // Short delay to ensure button is properly positioned
+                
+                // Remove the container if it's empty
+                if (buttonContainer.childElementCount === 0) {
+                    buttonContainer.remove();
                 }
             }
             
             // Reset button styles
             this._applyExpandedButtonStyles();
+            
+            // Force reflow to ensure styles are applied correctly
+            void this.button.offsetWidth;
             
             // Ensure all child elements are visible
             const elementsToShow = strip.querySelectorAll(':scope > *:not(style)');
@@ -305,18 +381,18 @@
         
         // Cleanup method to ensure proper state on page events
         cleanup() {
+            // Remove resize event listener
+            if (this._boundResizeHandler) {
+                window.removeEventListener('resize', this._boundResizeHandler);
+                this._boundResizeHandler = null;
+            }
+            
             // Remove any lingering toggle containers
             const container = document.getElementById('edgetabs-toggle-container');
             if (container) {
                 container.remove();
             }
             
-            // Check for button in toolbar
-            const toolbar = document.querySelector('.toolbar-bottom');
-            if (toolbar && this.button && toolbar.contains(this.button)) {
-                toolbar.removeChild(this.button);
-            }
-
             // Reset button position if it exists
             if (this.button) {
                 this._applyExpandedButtonStyles();
@@ -324,21 +400,20 @@
             }
         },
         
-        // Debug method to check toggle state
-        debugToggleState() {
-            const elements = this._getDOMElements();
-            if (!elements) {
-                EdgeTabsPlus.logToEruda('DEBUG: Required DOM elements not found', 'warn');
-                return;
+        // Handle window resize
+        _handleResize() {
+            // Only update if not collapsed (if collapsed, we'll update on expand)
+            if (!this.isCollapsed && this.button) {
+                this._storeButtonPosition();
+                
+                // Update container position if it exists
+                const buttonContainer = document.getElementById('edgetabs-toggle-container');
+                if (buttonContainer && this._buttonOriginalPosition) {
+                    buttonContainer.style.top = `${this._buttonOriginalPosition.top}px`;
+                    buttonContainer.style.left = `${this._buttonOriginalPosition.left}px`;
+                    this._setContainerDimensions(buttonContainer);
+                }
             }
-            
-            const { strip } = elements;
-            EdgeTabsPlus.logToEruda('==== Toggle Button Debug ====', 'log');
-            EdgeTabsPlus.logToEruda(`isCollapsed: ${this.isCollapsed}`, 'log');
-            EdgeTabsPlus.logToEruda(`Strip classes: ${strip.className}`, 'log');
-            EdgeTabsPlus.logToEruda(`Strip visibility: ${strip.style.visibility}`, 'log');
-            EdgeTabsPlus.logToEruda(`Button exists: ${!!this.button}`, 'log');
-            EdgeTabsPlus.logToEruda('===========================', 'log');
         }
     };
 })();

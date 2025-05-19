@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "EdgeTabs+",
   "version": "0.7.5",
-  "description": "Adds a tab strip in Edge for Android.",
+  "description": "Adds a tab strip at the bottom in Edge for Android.",
   "icons": {
     "128": "icons/icon128.png",
     "48": "icons/icon48.png"
@@ -18,6 +18,12 @@
       "matches": ["<all_urls>"],
       "js": [
         "modules/namespace.js",
+        "modules/styles/criticalFixesStyles.js",
+        "modules/styles/baseStyles.js",
+        "modules/styles/tabWidthStyles.js",
+        "modules/styles/tabDynamicStyles.js",
+        "modules/styles/themeStyles.js",
+        "modules/styles/customStyles.js",
         "modules/config.js",
         "modules/shadowStylesManager.js",
         "modules/faviconHandler.js",
@@ -45,5 +51,4 @@
     "use_dynamic_url": true
   }],
   "author": "Achyuth072"
-
 }
