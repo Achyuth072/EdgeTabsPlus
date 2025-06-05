@@ -429,3 +429,126 @@
             let timeout;
             return (...args) => {
                 clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), delay);
+            };
+        },
+
+        /**
+         * Creates a throttled version of a function.
+         * @param {Function} func The function to throttle
+         * @param {number} delay Delay in ms between function executions
+         * @returns {Function} Throttled function
+         */
+        _throttle(func, delay) {
+            let lastCall = 0;
+            return (...args) => {
+                const now = Date.now();
+                if (now - lastCall >= delay) {
+                    lastCall = now;
+                    func.apply(this, args);
+                }
+            };
+        },
+
+        /**
+         * Injects all necessary CSS styles into the Shadow DOM.
+         * Called once during initialization to avoid multiple style injections.
+         */
+        _injectStyles() {
+            if (!this._elements?.shadowRoot) return;
+            
+            // Check if styles are already injected
+            const existingStyles = this._elements.shadowRoot.getElementById('edgetabs-toggle-button-styles');
+            if (existingStyles) return;
+
+            const style = document.createElement('style');
+            style.id = 'edgetabs-toggle-button-styles';
+            style.textContent = `
+                /* Toggle button base styles */
+                .strip-toggle-btn {
+                    background: ${this.TOGGLE_BUTTON_BG_COLOR};
+                    color: ${this.TOGGLE_BUTTON_COLOR};
+                    border: none;
+                    border-radius: 50%;
+                    width: 32px;
+                    height: 32px;
+                    font-size: 14px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.3s ease;
+                    z-index: 10000;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+                }
+
+                .strip-toggle-btn:hover {
+                    background: #1ea5b3;
+                    transform: scale(1.05);
+                }
+
+                .strip-toggle-btn:active {
+                    transform: scale(0.95);
+                }
+
+                /* Button when in expanded state (inside strip) */
+                .strip-toggle-btn.button-expanded-styles {
+                    position: relative;
+                    margin-right: 8px;
+                    flex-shrink: 0;
+                }
+
+                /* Button when in collapsed state (in fixed container) */
+                .strip-toggle-btn.button-collapsed-styles {
+                    position: static;
+                }
+
+                /* Fixed container for collapsed button */
+                .toggle-button-container {
+                    position: fixed;
+                    z-index: 10001;
+                    pointer-events: auto;
+                    transition: transform 0.3s ease, opacity 0.3s ease;
+                }
+
+                .toggle-button-container.hidden {
+                    display: none;
+                }
+
+                .toggle-button-container.container-collapsed-styles {
+                    display: block;
+                }
+
+                /* Animation classes */
+                .toggle-button-container.container-transitioning {
+                    transition: all 0.3s ease;
+                }
+
+                .strip-transitioning {
+                    transition: all 0.3s ease;
+                }
+
+                /* Strip collapse/expand visuals */
+                .strip-collapsed-visuals {
+                    transform: translateY(-100%);
+                    opacity: 0;
+                    pointer-events: none;
+                }
+
+                .strip-hidden-initially {
+                    opacity: 0;
+                    transition: opacity 0.2s ease;
+                }
+
+                /* Scroll-based hiding */
+                .toggle-button-container.slide-hide-via-scroll {
+                    transform: translateY(100px);
+                    opacity: 0.3;
+                }
+            `;
+            
+            this._elements.shadowRoot.appendChild(style);
+        }
+    };
+})();
