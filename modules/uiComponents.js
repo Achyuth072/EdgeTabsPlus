@@ -7,8 +7,9 @@
         addButton: null,
         addButtonContainer: null,
 
-        async init() {
-            const { host, strip, shadow } = this.createTabStrip();
+        async init(initialState = {}) {
+            const { isCollapsed = false } = initialState;
+            const { host, strip, shadow } = this.createTabStrip(isCollapsed);
             this.host = host;
             this.strip = strip;
             this.shadow = shadow;
@@ -29,14 +30,6 @@
             await new Promise(resolve => requestAnimationFrame(resolve));
             this.setupStrip();
             
-            // Initialize toggle button functionality (if available)
-            if (EdgeTabsPlus.toggleButton) {
-                // Initialize the toggle button
-                EdgeTabsPlus.toggleButton.init();
-                EdgeTabsPlus.logToEruda('Toggle button initialized from uiComponents', 'log');
-            } else {
-                EdgeTabsPlus.logToEruda('Toggle button module not available', 'error');
-            }
             
             // Add additional check to ensure strip visibility
             this.ensureStripVisibility();
@@ -137,7 +130,7 @@
             this.host.setAttribute('theme', isDark ? 'dark' : 'light');
         },
 
-        createTabStrip() {
+        createTabStrip(isCollapsed = false) {
             const host = document.createElement('div');
             host.id = 'edgetabs-plus-host';
             
@@ -147,10 +140,18 @@
             // Create the strip container inside shadow DOM
             const strip = document.createElement('div');
             strip.id = 'edgetabs-plus-strip';
+
+            // Apply the initial collapsed state before appending to the DOM
+            if (isCollapsed) {
+                strip.classList.add('collapsed', 'strip-collapsed-visuals');
+                // When collapsed, display is controlled by the CSS class, so don't set it inline
+            } else {
+                strip.classList.add('strip-expanded-visuals');
+                strip.style.display = 'flex'; // Only apply display:flex when not collapsed
+            }
             
             // Apply critical styles directly
             strip.style.setProperty('--strip-bottom-offset', EdgeTabsPlus.config.tabStrip.bottomOffset);
-            strip.style.display = 'flex';
             strip.style.position = 'fixed';
             strip.style.bottom = EdgeTabsPlus.config.tabStrip.bottomOffset || '0';
             strip.style.left = '0';
@@ -243,8 +244,13 @@
                 if (target.closest('.tab-item')) {
                     e.preventDefault();
                     e.stopPropagation();
-                    const tabId = target.closest('.tab-item').dataset.tabId;
-                    chrome.runtime.sendMessage({ action: 'activateTab', tabId });
+                    const tabIdStr = target.closest('.tab-item').dataset.tabId;
+                    const tabId = parseInt(tabIdStr, 10);
+                    if (!isNaN(tabId)) {
+                        chrome.runtime.sendMessage({ action: 'activateTab', tabId: tabId });
+                    } else {
+                        console.error('EdgeTabsPlus: Invalid tabId found in dataset:', tabIdStr);
+                    }
                 }
             });
             

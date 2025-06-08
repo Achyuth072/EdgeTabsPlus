@@ -142,20 +142,50 @@ async function getFaviconUrl(tabId) {
 }
 
 // Handle tab creation with delay and error handling
+// Initialize state on extension installation
+chrome.runtime.onInstalled.addListener(() => {
+    chrome.storage.local.get('tabBarCollapsed', (data) => {
+        if (data.tabBarCollapsed === undefined) {
+            chrome.storage.local.set({ tabBarCollapsed: false });
+            forwardLogToContentScript('BG: Initialized tabBarCollapsed to false on install.');
+        }
+    });
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch(request.action) {
         case 'UPDATE_SCROLL_POSITION':
             sharedLastScrollPosition = request.position;
             break;
+        case 'toggleCollapse':
+            // Spec-compliant: update state and broadcast to all tabs
+            const newState = request.newState;
+            chrome.tabs.query({}, (tabs) => {
+                tabs.forEach(tab => {
+                    chrome.tabs.sendMessage(tab.id, {
+                        action: 'broadcastCollapseState',
+                        newState: newState
+                    });
+                });
+            });
+            if (sendResponse) {
+                sendResponse({ success: true });
+            }
+            return true; // Keep message channel open
+        // ...rest of cases unchanged...
         case 'closeTab':
             chrome.tabs.remove(request.tabId)
                 .then(() => notifyTabsUpdated())
                 .catch(error => console.error('Failed to close tab:', error));
             break;
         case 'activateTab':
-            chrome.tabs.update(request.tabId, { active: true })
-                .then(() => notifyTabsUpdated())
-                .catch(error => console.error('Failed to activate tab:', error));
+            if (request.tabId && typeof request.tabId === 'number') {
+                chrome.tabs.update(request.tabId, { active: true })
+                    .then(() => notifyTabsUpdated())
+                    .catch(error => console.error(`Failed to activate tab ${request.tabId}:`, error));
+            } else {
+                console.error('Invalid tabId received for activateTab:', request.tabId);
+            }
             break;
         case 'createTab':
             setTimeout(() => {

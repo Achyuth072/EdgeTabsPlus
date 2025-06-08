@@ -31,7 +31,6 @@
         "modules/tabManager.js",
         "modules/scrollHandler.js",
         "modules/touchHandler.js",
-        "modules/toggleButton.js",
         "content.js"
       ],
       "css": [

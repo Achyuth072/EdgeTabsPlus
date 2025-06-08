@@ -23,14 +23,22 @@ EdgeTabsPlus.logToEruda("!!! CONTENT_SCRIPT_ROOT_TEST_LOG --- ERUDA_CAPTURE_CHEC
             // which doesn't require initialization
             
             // Initialize UI components and wait for styles to be ready
-            await EdgeTabsPlus.uiComponents.init();
+            // Fetch initial state before initializing UI components
+            const initialState = await new Promise((resolve) => {
+                chrome.storage.local.get(['tabBarCollapsed'], (result) => {
+                    resolve({ isCollapsed: result.tabBarCollapsed === true });
+                });
+            });
+            
+            // Initialize UI components with the correct initial state
+            await EdgeTabsPlus.uiComponents.init(initialState);
             
             // Logger initialization removed as part of Eruda transition
-
+ 
             // After logger is ready, use it for subsequent logs
             EdgeTabsPlus.logToEruda('Core modules initialized', 'log');
             EdgeTabsPlus.logToEruda(`Using scroll threshold: ${EdgeTabsPlus.config.scroll.threshold}px`, 'log');
-
+ 
             // Initialize favicon handler with retry logic
             try {
                 await EdgeTabsPlus.faviconHandler.init();
@@ -41,12 +49,12 @@ EdgeTabsPlus.logToEruda("!!! CONTENT_SCRIPT_ROOT_TEST_LOG --- ERUDA_CAPTURE_CHEC
                 EdgeTabsPlus.faviconHandler.db = null;
                 EdgeTabsPlus.faviconHandler.cache.clear();
             }
-
+ 
             // Initialize remaining modules
             EdgeTabsPlus.tabManager.init();
             EdgeTabsPlus.scrollHandler.init();
             EdgeTabsPlus.touchHandler.init();
-
+ 
             // Initialize states from storage
             // Initialize theme media query listener
             const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -105,14 +113,6 @@ EdgeTabsPlus.logToEruda("!!! CONTENT_SCRIPT_ROOT_TEST_LOG --- ERUDA_CAPTURE_CHEC
                                 
                                 EdgeTabsPlus.logToEruda(`Theme set to ${theme}, visibility: ${showStrip}, auto-hide: ${autoHide}`, 'log');
                                 
-                                // Ensure toggle button state is consistent with strip visibility
-                                if (EdgeTabsPlus.toggleButton) {
-                                    // If strip is not shown, make sure toggle is in collapsed state
-                                    if (!showStrip && !EdgeTabsPlus.toggleButton.isCollapsed) {
-                                        EdgeTabsPlus.toggleButton.collapseTabStrip(false);
-                                        EdgeTabsPlus.logToEruda('Toggle button state corrected to match strip visibility', 'log');
-                                    }
-                                }
                             } else {
                                 EdgeTabsPlus.logToEruda('Strip element not found in shadow DOM', 'error');
                             }
@@ -146,11 +146,27 @@ EdgeTabsPlus.logToEruda("!!! CONTENT_SCRIPT_ROOT_TEST_LOG --- ERUDA_CAPTURE_CHEC
 
     // Listen for messages from popup and background
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        // Spec-compliant: Listen for broadcastCollapseState and update UI
+        if (message.action === "broadcastCollapseState") {
+            // Find the tab container in the shadow DOM and toggle 'collapsed' class
+            const host = document.getElementById('edgetabs-plus-host');
+            if (host && host.shadowRoot) {
+                const tabContainer = host.shadowRoot.getElementById('edgetabs-plus-strip');
+                if (tabContainer) {
+                    if (message.newState) {
+                        tabContainer.classList.add('collapsed');
+                    } else {
+                        tabContainer.classList.remove('collapsed');
+                    }
+                }
+            }
+        }
+        // (Keep other message handlers unchanged)
         if (!window.EdgeTabsPlus) {
             EdgeTabsPlus.logToEruda(`EdgeTabsPlus not initialized for message: ${JSON.stringify(message)}`, 'error');
             return;
         }
-// Logger references removed as part of Eruda transition
+    // Logger references removed as part of Eruda transition
 
 
         switch (message.action) {
@@ -208,40 +224,45 @@ EdgeTabsPlus.logToEruda("!!! CONTENT_SCRIPT_ROOT_TEST_LOG --- ERUDA_CAPTURE_CHEC
 
             case 'toggleUpdate':
                 try {
+                    const host = document.getElementById('edgetabs-plus-host');
+                    if (!host || !host.shadowRoot) {
+                        EdgeTabsPlus.logToEruda('Host or shadowRoot not found for toggleUpdate', 'error');
+                        return;
+                    }
+                    const tabStrip = host.shadowRoot.getElementById('edgetabs-plus-strip');
+                    if (!tabStrip) {
+                        EdgeTabsPlus.logToEruda('tabStrip not found for toggleUpdate', 'error');
+                        return;
+                    }
+
                     switch (message.key) {
                         case 'showTabStrip':
-                            const tabStrip = document.getElementById('edgetabs-plus-strip');
-                            if (tabStrip) {
-                                // Add transition class before changing display
-                                tabStrip.classList.add('transitioning');
-                                
-                                if (message.value) {
-                                    // Show strip
-                                    tabStrip.style.display = 'flex';
-                                    // Force reflow
-                                    void tabStrip.offsetHeight;
-                                    tabStrip.classList.add('visible');
-                                    setTimeout(() => {
-                                        tabStrip.classList.remove('transitioning');
-                                    }, 300);
-                                } else {
-                                    // Hide strip
-                                    tabStrip.classList.remove('visible');
-                                    setTimeout(() => {
-                                        tabStrip.style.display = 'none';
-                                        tabStrip.classList.remove('transitioning');
-                                    }, 300);
-                                }
-                                
-                                EdgeTabsPlus.logToEruda(`Tab strip visibility set to: ${message.value}`, 'log');
+                            // Add transition class before changing display
+                            tabStrip.classList.add('transitioning');
+                            
+                            if (message.value) {
+                                // Show strip
+                                tabStrip.style.display = 'flex';
+                                // Force reflow
+                                void tabStrip.offsetHeight;
+                                tabStrip.classList.add('visible');
+                                setTimeout(() => {
+                                    tabStrip.classList.remove('transitioning');
+                                }, 300);
+                            } else {
+                                // Hide strip
+                                tabStrip.classList.remove('visible');
+                                setTimeout(() => {
+                                    tabStrip.style.display = 'none';
+                                    tabStrip.classList.remove('transitioning');
+                                }, 300);
                             }
+                            
+                            EdgeTabsPlus.logToEruda(`Tab strip visibility set to: ${message.value}`, 'log');
                             break;
                             
                         case 'autoHide':
-                            const strip = document.getElementById('edgetabs-plus-strip');
-                            if (strip) {
-                                strip.classList.toggle('auto-hide-enabled', message.value);
-                            }
+                            tabStrip.classList.toggle('auto-hide-enabled', message.value);
                             EdgeTabsPlus.scrollHandler.setAutoHide(message.value);
                             EdgeTabsPlus.logToEruda(`Auto-hide set to: ${message.value}`, 'log');
                             break;
