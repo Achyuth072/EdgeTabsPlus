@@ -54,10 +54,11 @@ EdgeTabsPlus.logToEruda("!!! CONTENT_SCRIPT_ROOT_TEST_LOG --- ERUDA_CAPTURE_CHEC
             EdgeTabsPlus.tabManager.init();
             EdgeTabsPlus.scrollHandler.init();
             EdgeTabsPlus.touchHandler.init();
- 
-            // Initialize states from storage
-            // Initialize theme media query listener
-            const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            EdgeTabsPlus.collapsibleTabBar.init();
+           
+                       // Initialize states from storage
+                       // Initialize theme media query listener
+                       const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
             const updateThemeFromMediaQuery = (e) => {
                 const isDark = e.matches;
                 const newTheme = isDark ? 'dark' : 'light';
@@ -292,3 +293,6 @@ EdgeTabsPlus.logToEruda("!!! CONTENT_SCRIPT_ROOT_TEST_LOG --- ERUDA_CAPTURE_CHEC
         initialize();
     }
 })();
+// --- Collapsible Tab Bar Feature ---
+// The collapsible tab bar is now initialized in the main initialize function.
+// The script is loaded via manifest.json content_scripts.

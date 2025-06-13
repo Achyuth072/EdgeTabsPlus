@@ -75,16 +75,36 @@
                 transform: translateY(0);
                 z-index: 9999999;
                 display: flex;
+                align-items: center;
+                width: 100%;
+                gap: 8px; /* Spacing between elements */
                 position: fixed;
                 bottom: var(--strip-bottom-offset, 0);
                 left: 0;
-                width: 100%;
                 background-color: var(--strip-bg);
                 border-top: 1px solid var(--strip-border);
                 box-shadow: 0 -2px 4px var(--strip-shadow);
                 will-change: transform;
+            }
+
+            /* Make the tabs list flexible */
+            #tabs-list {
+                flex: 1; /* Fill available space */
+                min-width: 0; /* Prevents overflow issues */
+                display: flex;
+                gap: 8px;
                 align-items: center;
-                justify-content: flex-start;
+                padding: 0;
+                margin: 0;
+                list-style: none;
+            }
+
+            /* Side elements should not shrink */
+            .tab-bar-toggle-container,
+            .add-tab-container {
+                flex-shrink: 0; /* Prevents shrinking */
+                display: flex;
+                align-items: center;
             }
 
             /* Ensure add-tab button and separator are horizontally aligned and vertically centered */

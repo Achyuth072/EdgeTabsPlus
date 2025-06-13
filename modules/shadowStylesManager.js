@@ -37,6 +37,7 @@
             if (ETP.styleGenerators.getTabWidthStyles) styles.push(ETP.styleGenerators.getTabWidthStyles(config));
             if (ETP.styleGenerators.getTabDynamicStyles) styles.push(ETP.styleGenerators.getTabDynamicStyles(config));
             if (ETP.styleGenerators.getThemeStyles) styles.push(ETP.styleGenerators.getThemeStyles(theme));
+            if (ETP.styleGenerators.getCollapsibleTabBarStyles) styles.push(ETP.styleGenerators.getCollapsibleTabBarStyles());
             if (ETP.styleGenerators.getCustomStyles) styles.push(ETP.styleGenerators.getCustomStyles(customCSS));
 
             // Add logging for missing style functions during development

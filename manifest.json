@@ -24,6 +24,7 @@
         "modules/styles/tabDynamicStyles.js",
         "modules/styles/themeStyles.js",
         "modules/styles/customStyles.js",
+        "modules/styles/collapsibleTabBarStyles.js",
         "modules/config.js",
         "modules/shadowStylesManager.js",
         "modules/faviconHandler.js",
@@ -31,6 +32,7 @@
         "modules/tabManager.js",
         "modules/scrollHandler.js",
         "modules/touchHandler.js",
+        "modules/collapsibleTabBar.js",
         "content.js"
       ],
       "css": [

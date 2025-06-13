@@ -227,6 +227,11 @@
             this.strip.appendChild(this.tabsList);
             this.strip.appendChild(this.addButtonContainer);
             document.body.appendChild(this.host);
+
+            // Initialize the collapsible tab bar
+            if (EdgeTabsPlus.collapsibleTabBar && typeof EdgeTabsPlus.collapsibleTabBar.init === 'function') {
+                EdgeTabsPlus.collapsibleTabBar.init();
+            }
             
             // Set up event delegation in shadow root
             this.shadow.addEventListener('click', (e) => {
