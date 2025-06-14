@@ -178,6 +178,25 @@
                 transform: translateZ(0);
             }
             
+            /* Apply common toggle styles to add-tab button */
+            #add-tab {
+                cursor: pointer;
+                padding: 5px;
+                width: 28px;
+                height: 28px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                background-color: rgba(255, 255, 255, 0.1);
+                transition: background-color 0.2s;
+                border-radius: 4px;
+                margin-left: 8px; /* Adjust margin to align with other elements */
+            }
+
+            #add-tab:hover {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+
             /* Tab content layout with proper alignment */
             .tab-content {
                 display: flex;

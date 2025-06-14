@@ -149,14 +149,15 @@
             return;
         }
 
-        // Initialize container as expanded by default
+        // Initialize container with base class and hidden state to prevent flash
         mainContainer.classList.add('tab-bar-container');
-        mainContainer.setAttribute('data-collapsed', 'false');
-        
+        mainContainer.style.visibility = 'hidden'; // Hide initially
+        mainContainer.style.maxHeight = '0'; // Start collapsed visually
+        mainContainer.style.opacity = '0'; // Start invisible
+
         // Create and prepare toggle buttons
         const { expandToggle, collapseToggle } = createToggleButtons();
-        expandToggle.style.display = 'none'; // Start hidden
-        collapseToggle.style.display = 'flex'; // Start visible
+        // Toggles will be managed by loadAndApplyState, so no initial display here
 
         // Insert collapse toggle as first child of main container
         mainContainer.insertBefore(collapseToggle, mainContainer.firstChild);
@@ -175,10 +176,13 @@
             collapseTabBar(mainContainer, expandToggle, collapseToggle);
         });
 
-        // Apply any saved state after frame renders
-        requestAnimationFrame(() => {
-            mainContainer.style.transition = '';
-            loadAndApplyState(mainContainer, expandToggle, collapseToggle);
+        // Load and apply saved state immediately
+        loadAndApplyState(mainContainer, expandToggle, collapseToggle).then(() => {
+            // After state is applied, make visible and re-enable transitions
+            mainContainer.style.visibility = ''; // Revert to default visibility
+            mainContainer.style.maxHeight = ''; // Revert to default max-height (from CSS)
+            mainContainer.style.opacity = ''; // Revert to default opacity (from CSS)
+            mainContainer.style.transition = ''; // Re-enable transitions
         });
     }
 

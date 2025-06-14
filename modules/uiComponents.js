@@ -211,6 +211,7 @@
         createAddButton() {
             const button = document.createElement('button');
             button.id = 'add-tab';
+            button.className = 'tab-strip-button';
             button.innerHTML = '+';
             
             button.onclick = (e) => {
