@@ -70,7 +70,7 @@
      * @param {HTMLElement} collapseToggle
      */
     function collapseTabBar(container, expandToggle, collapseToggle) {
-        // Update container state first
+        // Update container state
         container.classList.add('is-collapsed');
         container.setAttribute('data-collapsed', 'true');
 
@@ -155,15 +155,14 @@
         
         // Create and prepare toggle buttons
         const { expandToggle, collapseToggle } = createToggleButtons();
-        expandToggle.style.order = '-1';
         expandToggle.style.display = 'none'; // Start hidden
-        
-        collapseToggle.style.order = '-1';
         collapseToggle.style.display = 'flex'; // Start visible
 
-        // Add collapse toggle to container and expand toggle to document body
+        // Insert collapse toggle as first child of main container
         mainContainer.insertBefore(collapseToggle, mainContainer.firstChild);
-        shadowRoot.appendChild(expandToggle); // Append to shadowRoot, not body
+
+        // Insert expand toggle directly into shadow root before main container
+        shadowRoot.insertBefore(expandToggle, mainContainer);
 
         // Set up event handlers with propagation stopped
         expandToggle.addEventListener('click', (e) => {
