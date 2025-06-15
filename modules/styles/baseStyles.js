@@ -172,10 +172,21 @@
                 flex: 0 0 var(--tab-width, 180px);
                 transition: transform 0.2s ease-out,
                           width 0.2s ease-in-out,
-                          background-color 0.3s ease;
+                          background-color 0.3s ease,
+                          box-shadow 0.2s ease;
                 -webkit-tap-highlight-color: transparent;
                 /* Android-specific hardware acceleration */
                 transform: translateZ(0);
+                cursor: pointer;
+            }
+
+            .tab-item:hover {
+                background-color: var(--tab-hover-bg);
+                box-shadow: 0 2px 4px var(--tab-shadow);
+            }
+
+            .tab-item:active {
+                transform: translateY(1px) translateZ(0);
             }
             
             /* Apply common toggle styles to add-tab button */
